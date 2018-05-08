@@ -191,7 +191,7 @@ ONSTYLE
 
 3. 주요기능
 - #### 사용자 웹
-	* [시연 동영상 URL]:(https://youtu.be/9XtdQrbn8Ag)
+	* [시연 동영상 URL]:https://youtu.be/9XtdQrbn8Ag
 	* [상품조회][prodct]
 	* [가상코디][virtualCodi]
 	* [코디요청][codiReqst]
