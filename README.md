@@ -12,7 +12,7 @@ ONSTYLE
 5) 참여도 : 100%
 6) 담당업무 : 기획, 분석 및 설계, 개발
 7) 주요실적 : 기획, 분석 및 설계와 웹페이지의 가상코디 시뮬레이션, 코디요청, 코디공유 구현
-8) 시연 동영상 URL : [https://youtu.be/9XtdQrbn8Ag]:(https://youtu.be/9XtdQrbn8Ag)
+8) [시연 동영상 URL]:(https://youtu.be/9XtdQrbn8Ag)
 </pre>
 
 
