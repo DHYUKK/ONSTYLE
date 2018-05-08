@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >	
+
+<mapper namespace="adminStoreMapper">
+    <resultMap type="adminStoreVo" id="adminStoreVo">
+    
+    </resultMap>
+    
+    <!-- 상품 조회-->
+   <select id="productList" resultMap="adminStoreVo">
+       SELECT	p.prodct_seq, p.prodct_price, p.prodct_nme   
+       FROM   	prodct p
+       WHERE	prodct_seq not in (select prodct_seq
+									from	sale_tb s, sale_bridge_tb b
+									where 	s.sale_seq = b.sale_seq
+									and		b.sale_true = "Y"
+									and		((s.sale_start_date &#60;= #{sale_end_date} and #{sale_start_date} &#60;= s.sale_start_date)
+									or 		(s.sale_start_date &#60;=#{sale_start_date} and #{sale_end_date} &#60;= s.sale_end_date)
+        							or 		(s.sale_end_date &#60;=#{sale_end_date} and #{sale_start_date} &#60;= s.sale_end_date)))
+       AND		prodct_seq not in (select prodct_seq
+									from sale_bridge_tb br
+									where sale_true = "N")
+       AND		prodct_seq not in (select prodct_seq
+									from sale_bridge_tb bri
+									where sale_true = "P")		
+       <if test="category_seq == 1">
+       AND 		p.category_seq in (6,7,8)
+       </if>
+       <if test="category_seq == 2">
+       AND 		p.category_seq in (9,10)
+       </if>
+       <if test="category_seq != 1 and category_seq != 2">
+       AND 		p.category_seq = #{category_seq}
+       </if>
+   </select>
+   
+   	<!-- 선택된 상품들 -->
+   <select id="product_check_List" resultMap="adminStoreVo">
+       SELECT	p.prodct_seq, p.prodct_price, p.prodct_nme
+       FROM   	prodct p, sale_bridge_tb s
+       WHERE	p.prodct_seq = s.prodct_seq
+       AND		s.sale_true = "N"
+   </select>
+   
+	<!-- sale_max_seq -->
+	<select id="max_sale_seq" resultMap="adminStoreVo" parameterType="adminStoreVo">
+		SELECT 	IFNULL(MAX(sale_seq),0) + 1 AS sale_seq 
+		FROM 	sale_tb
+	</select>	
+   
+ 	<!-- 상품 임시 등록 -->
+	<insert id="insert_yet_sale" parameterType="adminStoreVo">
+		INSERT INTO sale_bridge_tb 
+					( sale_bridge_seq
+					,sale_seq
+					,prodct_seq
+					,sale_true
+					,sale_bridge_discntrate
+	 	    		)
+		VALUES		
+			       <foreach collection = "group" item="group" separator=",">
+					((SELECT IFNULL(MAX(a.sale_bridge_seq),0) + 1 AS sale_bridge_seq FROM sale_bridge_tb as a)
+					,#{sale_seq}
+					,#{group}
+					,"N"
+					,0
+					)
+					</foreach>
+	</insert>
+	
+	<!-- 임시 상품 삭제 -->
+	<delete id="delete_yet_sale" parameterType="adminStoreVo">
+	    DELETE
+	    FROM	sale_bridge_tb
+	    WHERE	sale_true = #{sale_true}
+	</delete>
+	
+	<!-- 임시 등록된 상품 삭제 -->
+	<delete id="delete_check_sale" parameterType="adminStoreVo">
+	    DELETE
+	    FROM	sale_bridge_tb
+	    WHERE	sale_true = #{sale_true}
+	    AND		prodct_seq in (
+	    		<foreach collection = "group" item="group" separator=",">
+	    			#{group}
+	    		</foreach>
+	    		)
+	</delete>
+	
+	<!-- 임시 등록 상품 prodctlist로 등록 -->
+	<update id="pop_defBtn" parameterType="adminStoreVo">
+	    UPDATE	sale_bridge_tb
+	    SET		sale_true = "P"
+	    WHERE	sale_true = "N"
+	</update>
+	    
+	<!-- 상태 p 리스트 조회 -->
+	<select id="p_selectList" resultMap="adminStoreVo" parameterType="adminStoreVo">
+	    SELECT 	sale_bridge_seq, p.prodct_seq, p.prodct_img_route1, p.prodct_nme, p.prodct_price, s.sale_bridge_discntrate, d.disply_seq
+		FROM	prodct p
+		LEFT JOIN disply_tb d
+		ON		p.prodct_seq = d.prodct_seq
+		JOIN	sale_bridge_tb s
+		ON		p.prodct_seq = s.prodct_seq
+		WHERE	s.sale_true = "P";
+	</select>
+	
+	<!-- 할인율 적용 -->
+	<update id="sale_percentage" parameterType="adminStoreVo">
+	    UPDATE	sale_bridge_tb
+	    SET		sale_bridge_discntrate = #{sale_bridge_discntrate}
+	    WHERE	sale_true = "P"
+	    AND 	prodct_seq in (
+	    		<foreach collection = "group" item="group" separator=",">
+	    		    #{group}
+	    		</foreach>
+	    		)
+	</update>
+	
+	<!-- 행사 등록 -->
+	<update id="update_sale" parameterType="adminStoreVo">
+	    UPDATE	sale_bridge_tb
+	    SET		sale_true = "Y"
+	    WHERE	sale_true = "P"
+	</update>
+	
+	<!-- sale 등록 -->
+	<insert id="insert_sale" parameterType="adminStoreVo">
+	    INSERT INTO sale_tb
+	    			(sale_seq, sale_nme, sale_start_date, sale_end_date)
+	    VALUES		(#{sale_seq}
+	    			,#{sale_nme}
+	    			,#{sale_start_date}
+	    			,#{sale_end_date}
+	    			)			
+	</insert>
+	
+	<!-- 행사 조회 -->
+	<select id="select_event" resultMap="adminStoreVo" parameterType="adminStoreVo">
+	    select 	s.sale_seq, sale_start_date, sale_end_date, s.sale_nme, count(sale_bridge_seq) as count_prodct
+		from 	sale_tb s, sale_bridge_tb b
+		where 	s.sale_seq = b.sale_seq
+		group by s.sale_seq;
+	</select>
+	
+	<!-- 세일가 조회 -->
+	<select id="select_price" resultMap="adminStoreVo" parameterType="adminStoreVo">
+	    select 	b.sale_bridge_discntrate
+		from 	sale_tb s, sale_bridge_tb b
+		where 	s.sale_seq = b.sale_seq
+		and 	#{time_date} >= sale_start_date
+		and 	sale_end_date >= #{time_date}
+		and		prodct_seq = #{prodct_seq};
+	</select>
+	
+</mapper>

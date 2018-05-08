@@ -1,0 +1,325 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >	
+
+<mapper namespace="adminOrdrMapper">
+
+<!-- 주문관리 조회 갯수나타내기 -->
+	<select id="all" resultType="ordrVo" parameterType="ordrVo">
+		SELECT 		order_state, COUNT(order_state) as stateCount
+		FROM 		order_tb
+		GROUP BY 	order_state;
+	</select>
+
+<!--     주문관리메뉴에서  입금전 관리로 - -->
+    <select id="creditselect" resultType="ordrVo" parameterType="ordrVo">
+		SELECT 	order_date
+				, od.order_seq
+		        , mem_name
+		        , group_concat(prodct_nme separator ', ') AS prodct_nme
+		        , order_sum
+		        , order_state
+		
+		FROM	 order_tb od
+				, order_breakdwn_tb odb
+				, prodct pd
+		        , mem_tb me 
+		        
+		WHERE	od.mem_seq = me.mem_seq
+        AND		od.order_seq = odb.order_seq
+        AND		odb.prodct_seq = pd.prodct_seq
+		AND		od.order_state like '%입금%'
+        GROUP BY od.order_seq
+    </select>
+    
+<!--     입금전관리에서 처리여부 변경 - -->
+    <update id="stateUpdete">
+    	UPDATE 	order_tb
+		SET 	order_state = #{order_state}
+		WHERE 	order_seq IN 
+		<foreach collection="order_seq_list" item="order_seq_list" open="(" separator="," close=")">
+			${order_seq_list}
+      	</foreach>
+    </update>
+    
+<!--     주문관리메뉴에서 상품준비중 관리로 - -->
+	<select id="prodctsselect" resultType="ordrVo" parameterType="ordrVo">
+		SELECT 	order_date
+				, od.order_seq
+				, mem_name
+				, group_concat(prodct_nme separator ', ') AS prodct_nme
+				, prodct_color_nme
+				, order_breakdwn_prodct_quanty
+				, order_sum
+				, order_state
+		
+		FROM	 order_tb od
+				, order_breakdwn_tb odb
+				, prodct pd
+				, mem_tb me 
+				
+		WHERE	od.mem_seq = me.mem_seq
+		AND		od.order_seq = odb.order_seq
+		AND		odb.prodct_seq = pd.prodct_seq
+		AND		(od.order_state like '%상품%' or od.order_state like '배송보류')
+		GROUP BY od.order_seq;
+	</select>
+	
+<!--     상품준비중 관리에서 처리여부 변경 - -->
+    <update id="prodctsUpdate">
+    	UPDATE 	order_tb
+		SET 	order_state = #{order_state}
+		WHERE 	order_seq IN 
+		<foreach collection="order_seq_list" item="order_seq_list" open="(" separator="," close=")">
+			${order_seq_list}
+      	</foreach>
+    </update>
+    
+<!--     주문관리메뉴에서 배송준비중 관리로 - -->
+	<select id="shippingReselect" resultType="ordrVo" parameterType="ordrVo">
+		SELECT 	order_date
+				, od.order_seq
+				, mem_name
+				, order_dlivy_num
+				, group_concat(prodct_nme separator ', ') AS prodct_nme
+				, prodct_color_nme
+				, order_breakdwn_prodct_quanty
+				, order_sum
+				, order_state
+				
+		FROM	 order_tb od
+				, order_breakdwn_tb odb
+				, prodct pd
+				, mem_tb me 
+				
+		WHERE	od.mem_seq = me.mem_seq
+		AND		od.order_seq = odb.order_seq
+		AND		odb.prodct_seq = pd.prodct_seq
+		AND		od.order_state like '%배송%'
+		GROUP BY od.order_seq;
+	</select> 
+	
+<!--     배송준비중 관리에서 처리여부 변경 - -->
+    <update id="shippingReUpdete" >
+    	UPDATE 	order_tb
+		SET 	order_state = #{order_state}
+		WHERE 	order_seq IN 
+		<foreach collection="order_seq_list" item="order_seq_list" open="(" separator="," close=")">
+			${order_seq_list}
+      	</foreach>
+    </update>  
+<!--     배송준비중에서 송장번호 조회 하기  -->
+    <select id="orderInforSeselect" resultType="ordrVo" parameterType="ordrVo">
+    	SELECT  od.order_seq
+				, order_date
+				, me.mem_name AS mem_name
+				, order_dlivy_num
+				, order_paree
+				, mem_ph
+				, od.mem_adrs AS mem_adrs
+				, order_msg
+				, prodct_nme
+				, shipping_date
+				, order_breakdwn_prodct_quanty
+				, pd.prodct_price AS prodct_price
+				, order_state
+            
+		FROM    order_breakdwn_tb ok
+				, order_tb od
+				, prodct pd
+				, mem_tb me
+			
+		WHERE   ok.order_seq = od.order_seq
+		AND     ok.prodct_seq = pd.prodct_seq
+		AND     me.mem_seq = od.mem_seq
+		and		od.order_seq = #{order_seq};
+    </select>
+<!-- 	송장번호 업뎃 하기 - -->
+    <update id="ordrInUpdete" >
+    	UPDATE 	order_tb
+		SET 	order_dlivy_num = #{order_dlivy_num}
+				, shipping_date = #{shipping_date}
+		WHERE 	order_seq = #{order_seq};
+    </update>  
+    
+<!--     주문관리메뉴에서 배송중 관리로 - -->
+	<select id="shippingsselects" resultType="ordrVo" parameterType="ordrVo">
+		SELECT 	order_date
+				, od.order_seq
+				, mem_name
+				, order_dlivy_num
+				, group_concat(prodct_nme separator ', ') AS prodct_nme
+				, prodct_color_nme
+				, order_breakdwn_prodct_quanty
+				, shipping_date
+				, order_sum
+				, order_state
+				
+		FROM	 order_tb od
+				, order_breakdwn_tb odb
+				, prodct pd
+				, mem_tb me 
+				
+		WHERE	od.mem_seq = me.mem_seq
+		AND		od.order_seq = odb.order_seq
+		AND		odb.prodct_seq = pd.prodct_seq
+		AND		od.order_state like '배송중'
+		GROUP BY od.order_seq;
+	</select> 
+<!--  배송준비중관리에서 처리여부 변경  - -->
+    <update id="shippingUpdete" >
+    	UPDATE 	order_tb
+		SET 	order_state = #{order_state}
+		WHERE 	order_seq IN 
+		<foreach collection="order_seq_list" item="order_seq_list" open="(" separator="," close=")">
+			${order_seq_list}
+      	</foreach>
+    </update>
+<!--     주문관리메뉴에서 배송완료 관리로 - -->
+	<select id="shippingFinselects" resultType="ordrVo" parameterType="ordrVo">
+		SELECT 	order_date
+				, od.order_seq
+				, mem_name
+				, order_dlivy_num
+				, group_concat(prodct_nme separator ', ') AS prodct_nme
+				, prodct_color_nme
+				, order_breakdwn_prodct_quanty
+				, shipping_date
+				, order_sum
+				, order_state
+				
+		FROM	 order_tb od
+				, order_breakdwn_tb odb
+				, prodct pd
+				, mem_tb me 
+				
+		WHERE	od.mem_seq = me.mem_seq
+		AND		od.order_seq = odb.order_seq
+		AND		odb.prodct_seq = pd.prodct_seq
+		AND		od.order_state like '배송완료'
+		GROUP BY od.order_seq;
+	</select>    
+<!-- 주문관리에서 전체주문 관리로 - -->
+	<select id="allOrderselects" resultType="ordrVo" parameterType="ordrVo">
+		SELECT 	order_date
+				, od.order_seq
+				, mem_name
+				, order_dlivy_num
+				, group_concat(prodct_nme separator ', ') AS prodct_nme
+				, prodct_color_nme
+				, order_breakdwn_prodct_quanty
+				, shipping_date
+				, order_sum
+				, order_methd
+				, order_state
+				
+		FROM	 order_tb od
+				, order_breakdwn_tb odb
+				, prodct pd
+				, mem_tb me 
+				
+		WHERE	od.mem_seq = me.mem_seq
+		AND		od.order_seq = odb.order_seq
+		AND		odb.prodct_seq = pd.prodct_seq
+		AND		(od.order_state like '%입금%' or od.order_state like '상품' or od.order_state like '배송' or od.order_state like '교환' or od.order_state like '반품')
+		GROUP BY od.order_seq;
+	</select>    
+	
+<!--     주문관리에서 입급전 취소 관리로  - -->
+	<select id="creditsselect" resultType="ordrVo" parameterType="ordrVo">
+		SELECT  mem_seq
+				, order_date
+                , prodct_img_route1
+                , group_concat(prodct_nme separator ', ') AS prodct_nme
+                , order_breakdwn_prodct_quanty
+                , prodct_color_nme
+                , order_sum
+                , order_state
+                , od.order_seq AS order_seq
+                   
+		FROM    order_breakdwn_tb ok
+				, order_tb od
+				, prodct pd
+               
+		WHERE   ok.order_seq = od.order_seq
+		AND     ok.prodct_seq = pd.prodct_seq
+		AND		od.order_state like '%취소%';
+	</select>   
+	
+<!--     주문관리에서 입급후 취소 관리로  - -->
+	<select id="creditWooselect" resultType="ordrVo" parameterType="ordrVo">
+		SELECT  mem_seq
+				, order_date
+                , prodct_img_route1
+                , group_concat(prodct_nme separator ', ') AS prodct_nme
+                , order_breakdwn_prodct_quanty
+                , prodct_color_nme
+                , order_sum
+                , order_state
+                , od.order_seq AS order_seq
+                   
+		FROM    order_breakdwn_tb ok
+				, order_tb od
+				, prodct pd
+               
+		WHERE   ok.order_seq = od.order_seq
+		AND     ok.prodct_seq = pd.prodct_seq
+		AND		od.order_state like '%입금후취소%';
+	</select>   
+    
+<!--     주문관리에서 교환 관리로  - -->
+	<select id="exchangeselect" resultType="ordrVo" parameterType="ordrVo">
+		SELECT  order_date
+				, od.order_seq
+				, me.mem_name
+				, order_dlivy_num
+				, group_concat(prodct_nme separator ', ') AS prodct_nme
+				, prodct_color_nme
+				, shipping_date
+				, order_breakdwn_prodct_quanty
+				, order_state
+                   
+		FROM    order_breakdwn_tb ok
+				, order_tb od
+				, prodct pd
+				, mem_tb me
+				 
+		WHERE   ok.order_seq = od.order_seq
+		AND     ok.prodct_seq = pd.prodct_seq
+		AND		od.mem_seq = me.mem_seq
+		AND		od.order_state like '%교환%';
+	</select>   
+	
+<!--     주문관리에서 반품 관리로  - -->
+	<select id="returnselect" resultType="ordrVo" parameterType="ordrVo">
+		SELECT  order_date
+				, od.order_seq
+				, me.mem_name
+				, order_dlivy_num
+				, group_concat(prodct_nme separator ', ') AS prodct_nme
+				, prodct_color_nme
+				, shipping_date
+				, order_breakdwn_prodct_quanty
+				, order_state
+                   
+		FROM    order_breakdwn_tb ok
+				, order_tb od
+				, prodct pd
+				, mem_tb me
+				 
+		WHERE   ok.order_seq = od.order_seq
+		AND     ok.prodct_seq = pd.prodct_seq
+		AND		od.mem_seq = me.mem_seq
+		AND		od.order_state like '%반품%';
+	</select>   
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+</mapper>

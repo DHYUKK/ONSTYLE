@@ -1,0 +1,396 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >	
+
+<mapper namespace="myDressRoomMapper">
+	<resultMap id="myDrsRmValues" type="myDrsRmVo">
+	</resultMap>
+	<resultMap id="codiShrValues" type="codiShrVo">
+	</resultMap>
+	
+	<!-- 나의 옷 조회 -->
+	<select id="myClothSelect" parameterType="myDrsRmVo" resultMap="myDrsRmValues">
+		SELECT		my.myCloth_seq
+					, my.mycloth_img_route
+					, my.mem_seq
+					, c.category_nme
+		FROM		mycloth_tb my
+		JOIN		category_tb c
+		ON			my.category_seq = c.category_seq
+		WHERE		my.mem_seq = #{mem_seq}
+		AND			my.category_seq= #{category_seq}
+		LIMIT 		#{firstRecordIndex}, 24
+	</select>  
+	
+	<!-- 나의 옷 개수 조회 -->
+	<select id="myClothSelectCount" parameterType="myDrsRmVo" resultType="int">
+		SELECT		COUNT(my.myCloth_seq)	as totalRecordCount
+		FROM		mycloth_tb my
+		JOIN		category_tb c
+		ON			my.category_seq = c.category_seq
+		WHERE		my.mem_seq = #{mem_seq}
+		AND			my.category_seq= #{category_seq}
+	</select>
+	
+	<!-- 미스봄 상품 조회 -->
+	<select id="prodctSelect" parameterType="myDrsRmVo" resultMap="myDrsRmValues">
+		SELECT		 p.prodct_seq
+					, p.prodct_nme
+					, concat(format(prodct_price,0),'원') as prodct_price
+					, p.transparent_img_route
+					, c.category_nme
+		FROM		 prodct p
+		JOIN		category_tb c
+		ON			p.category_seq = c.category_seq
+		WHERE		p.category_seq = #{category_seq}
+		<choose>
+			<when test = "category_seq==1">
+		OR			p.category_seq = 6
+		OR			p.category_seq = 7
+		OR			p.category_seq = 8
+			</when>
+			<when test = "category_seq==2">
+		OR			p.category_seq = 9
+		OR			p.category_seq = 10
+			</when>
+		</choose>
+		LIMIT 		#{firstRecordIndex}, 24			<!-- 한 페이지당 게시되는 게시물 건 수 OFFSET 첫 페이지 인덱스 번호(글 번호) -->
+		
+	</select> 
+	
+	<!-- 미스봄 상품 개수 조회 -->
+	<select id="prodctSelectCount" parameterType="myDrsRmVo" resultType="int">
+		SELECT		COUNT(p.prodct_seq)		as totalRecordCount
+		FROM		prodct p
+		JOIN		category_tb c
+		ON			p.category_seq = c.category_seq
+		WHERE		p.category_seq = #{category_seq}
+		<choose>
+			<when test = "category_seq==1">
+		OR			p.category_seq = 6
+		OR			p.category_seq = 7
+		OR			p.category_seq = 8
+			</when>
+			<when test = "category_seq==2">
+		OR			p.category_seq = 9
+		OR			p.category_seq = 10
+			</when>
+		</choose>
+	</select>
+	
+	<!-- 나의 옷 정보 조회 -->
+	<select id="myClothRead" parameterType="myDrsRmVo" resultMap="myDrsRmValues">
+		SELECT		 mycloth_img_route
+					
+		FROM		 mycloth_tb
+		where		 myCloth_seq = #{myCloth_seq};
+	</select>  
+	
+	<!-- 미스봄상품 옷 정보 조회 -->
+	<select id="prodctClothRead" parameterType="myDrsRmVo" resultMap="myDrsRmValues">
+		SELECT		prodct_seq
+					, transparent_img_route
+					, prodct_nme
+					, concat(format(prodct_price,0),'원') as prodct_price
+					
+		FROM		 prodct
+		where		 prodct_seq = #{prodct_seq};
+	</select> 
+	
+	<!-- 이미지에 이름 붙이기위해 mycloth_tb MAX(seq)값 가져오기 -->
+	<select id="myClothMaxSeqSelect" resultMap="myDrsRmValues">
+		SELECT		 IFNULL(MAX(myCloth_seq),'1') as myCloth_seq
+		FROM		 mycloth_tb;
+	</select> 
+	
+	<!-- 나의 옷 등록 -->
+	<insert id="myClothInsert" parameterType="myDrsRmVo">
+		INSERT INTO mycloth_tb
+					(myCloth_seq
+					, myCloth_img_route
+					, mem_seq
+					, category_seq )
+					
+		VALUES		(${myCloth_seq}
+					, '${myCloth_img_route}'
+					, ${mem_seq}
+					, '${category_seq}');
+	</insert>
+	
+	<!-- 나의 코디 조회 -->							
+	<select id="codiList" parameterType="myDrsRmVo" resultMap="myDrsRmValues">
+		SELECT		 c.codi_seq
+					, c.codi_img_route
+					, m.mem_nicknme
+					, m.mem_img_route
+					, sh.codi_shr_seq
+					, count(distinct like_seq) as liked
+					, count(distinct codi_reply_seq) as reply
+					, (SELECT count(like_seq)
+						FROM	 like_tb a
+						WHERE	a.codi_shr_seq = l.codi_shr_seq
+						AND		a.mem_seq = ${mem_seq}) as likeState
+		FROM		 codi_tb c 
+		JOIN		 mem_tb m
+		ON			 c.mem_seq = m.mem_seq
+		LEFT JOIN	codi_shr_tb sh
+		ON			c.codi_seq = sh.codi_seq
+		LEFT JOIN	like_tb l
+		ON			sh.codi_shr_seq = l.codi_shr_seq
+		LEFT JOIN	codi_reply_tb r
+		ON			sh.codi_shr_seq = r.codi_shr_seq
+		<choose>
+			<when test = "pageCode==3">
+		WHERE		sh.codi_shr_seq in (SELECT 	codi_shr_seq
+										FROM	scrap_codi_tb
+										WHERE 	mem_seq = ${mem_seq})
+			</when>
+			<otherwise>
+		WHERE		c.mem_seq = ${mem_seq}
+		AND			c.codi_type = ${pageCode}
+			</otherwise>
+		</choose>
+		<choose>
+			<when test = "sortType==1">
+		AND			c.codi_seq in (select codi_seq from codi_shr_tb)
+			</when>
+			<when test = "sortType==2">
+		AND		 	c.codi_seq not in (select codi_seq from codi_shr_tb)
+			</when>
+		</choose>
+		GROUP BY	c.codi_seq
+		ORDER BY	c.codi_seq DESC
+		LIMIT 		0, #{selectRecordCount}
+	</select> 
+	
+	<!-- 나의 코디 개수 조회 -->							
+	<select id="codiListCount" parameterType="myDrsRmVo" resultType="int">
+		SELECT		count(distinct c.codi_seq)	as totalRecordCount	
+		FROM		codi_tb c 
+		JOIN		mem_tb m
+		ON			c.mem_seq = m.mem_seq
+		LEFT JOIN	codi_shr_tb sh
+		ON			c.codi_seq = sh.codi_seq
+		LEFT JOIN	like_tb l
+		ON			sh.codi_shr_seq = l.codi_shr_seq
+		LEFT JOIN	codi_reply_tb r
+		ON			sh.codi_shr_seq = r.codi_shr_seq
+		<choose>
+			<when test = "pageCode==3">
+				 WHERE		sh.codi_shr_seq in (SELECT 	codi_shr_seq
+												FROM	scrap_codi_tb
+												WHERE 	mem_seq = ${mem_seq})
+			</when>
+			<otherwise>
+				WHERE		 c.mem_seq = ${mem_seq}
+				AND			c.codi_type = ${pageCode}
+			</otherwise>
+		</choose>
+		<choose>
+			<when test = "sortType==1">
+				AND		 c.codi_seq in (select codi_seq from codi_shr_tb)
+			</when>
+			<when test = "sortType==2">
+				AND		 c.codi_seq not in (select codi_seq from codi_shr_tb)
+			</when>
+		</choose>
+		
+	</select> 
+	
+	<!-- 코디 공유 -->
+	<insert id="shrCodi" parameterType="myDrsRmVo">
+		INSERT INTO codi_shr_tb
+					  (codi_shr_seq
+					  , codi_shr_regtime
+					  , codi_seq)
+		
+		VALUES 
+		<foreach collection="selectedCodiSeq" item="item" separator=" , ">
+					 ((SELECT IFNULL(MAX(a.codi_shr_seq),0) + 1 AS codi_shr_seq FROM codi_shr_tb as a)
+					 , SYSDATE()
+					 , ${item})
+		</foreach>
+	</insert>
+	
+	<!-- 상세보기에서 공유했을 경우, 코디공유게시판 상세보기로 이동하기 위해 방금 공유한 코디의 코디공유seq select -->
+	<select id="selectCodiShrSeq" parameterType="myDrsRmVo" resultMap="codiShrValues">
+		SELECT 		codi_shr_seq
+		FROM 		codi_shr_tb
+		WHERE 		codi_seq = 
+				<foreach collection="selectedCodiSeq" item="item" separator=" , ">
+					${item}
+				</foreach>
+	</select>
+	
+	<!-- 스크랩 취소 -->
+	<delete id="scrapCancel" parameterType="myDrsRmVo">
+		DELETE 
+		FROM		scrap_codi_tb
+		WHERE		mem_seq = #{mem_seq}
+		AND			codi_shr_seq IN
+		<foreach collection="selectedCodiSeq" item="item" open="(" close=")" separator=" , "> 
+			 		(SELECT codi_shr_seq
+					FROM codi_shr_tb
+					WHERE codi_seq = #{item})
+		</foreach>
+	</delete>
+	
+	<!-- 코디 삭제 -->
+	<delete id="deleteCodi" parameterType="myDrsRmVo">
+		DELETE 
+		FROM		codi_tb
+		WHERE		mem_seq = #{mem_seq}
+		AND			codi_seq IN
+		<foreach collection="selectedCodiSeq" item="item" open="(" close=")" separator=" , "> 
+			 		#{item} 
+		</foreach>
+	</delete>
+	
+	<!-- 코디 및 회원 정보 조회 -->
+	<select id="codiInfo" parameterType="myDrsRmVo" resultMap="myDrsRmValues">
+		SELECT		 c.codi_seq
+						, mem_nicknme
+						, mem_img_route
+						, codi_img_route
+		FROM			 codi_tb c
+		JOIN			 mem_tb	m
+		ON				 c.mem_seq = m.mem_seq
+		WHERE			 c.codi_seq=${codi_seq};
+	</select>
+	
+	<!-- 코디에 사용된 상품 조회 -->
+	<select id="codiRead" parameterType="myDrsRmVo" resultMap="myDrsRmValues">
+		SELECT		p.prodct_seq
+					,transparent_img_route
+					, prodct_nme
+					, concat(format(prodct_price,0),'원') as prodct_price
+		FROM		codi_use_tb cu
+		JOIN		prodct p 
+		ON			 cu.prodct_seq = p.prodct_seq
+		WHERE		 cu.codi_seq = ${codi_seq};
+	</select>
+	
+	<!-- 코디 저장 -->
+	<insert id="insertCodi" parameterType="myDrsRmVo">
+		INSERT INTO 	codi_tb
+							 (codi_seq
+							 , codi_img_route
+							 , mem_seq
+							 , codi_type)
+		  
+		VALUES 
+							 ((SELECT IFNULL(MAX(a.codi_seq),0) + 1 AS codi_seq FROM codi_tb as a)
+							 , #{codi_img_route}
+							 , ${mem_seq}
+							 , ${codiSaveType})
+	</insert>
+	 
+	<!-- 코디 수정-->
+	<update id="updateCodi" parameterType="myDrsRmVo">
+		UPDATE codi_tb
+		SET codi_img_route = #{codi_img_route}
+		WHERE codi_seq = #{codi_seq};
+	</update>
+	
+	<!-- 이미지에 이름 붙이기위해 codi_tb MAX(seq)값 가져오기 -->
+	<select id="codiMaxSeq" resultMap="myDrsRmValues">
+		SELECT			IFNULL(MAX(codi_seq)+1,'1') as codi_seq
+		FROM			codi_tb;
+	</select>
+	
+	<!-- 나의 코디에 사용된 옷 등록 -->
+	<insert id="insertCodiUsedCloth" parameterType="java.util.List">
+	
+		INSERT INTO 	codi_use_tb
+							 (codi_use_seq
+							 , codi_use_xpoint
+							 , codi_use_ypoint
+							 , codi_use_width
+							 , codi_seq
+							 , myCloth_seq
+							 , prodct_seq
+							 , codi_use_sort)
+		  
+		VALUES 
+				<foreach collection="list" item="item" separator=" , ">
+							 ((SELECT IFNULL(MAX(a.codi_use_seq),0) + 1 AS codi_use_seq FROM codi_use_tb as a)
+							 , #{item.codi_use_xpoint}
+							 , #{item.codi_use_ypoint}
+							 , #{item.codi_use_width}
+							 , #{item.codi_seq}
+							 , #{item.myCloth_seq}
+							 , #{item.prodct_seq}
+							 , ${item.codi_use_sort})
+				</foreach>	
+	</insert>
+	
+	<!-- 나의 코디에 사용된 옷 조회 -->
+	<select id="usedClothList" resultMap="myDrsRmValues">
+		SELECT 			if(isnull(cu.myCloth_seq)
+						, p.transparent_img_route, my.myCloth_img_route) as codi_use_img
+						, codi_use_xpoint
+						, codi_use_ypoint
+						, codi_use_width
+						, if(isnull(cu.myCloth_seq), concat('p',cu.prodct_seq), concat('m', cu.myCloth_seq)) as id_code
+						, codi_seq
+		FROM 			codi_use_tb cu
+		LEFT JOIN 		prodct p
+		ON 				cu.prodct_seq = p.prodct_seq
+		LEFT JOIN 		mycloth_tb my
+		ON 				cu.myCloth_seq = my.myCloth_seq
+		WHERE 			cu.codi_seq = #{codi_seq}
+		ORDER BY 		cu.codi_use_sort;
+	</select>
+	
+	<!-- 코디 삭제 -->
+	<delete id="deleteUsedCloth" parameterType="myDrsRmVo">
+		DELETE 
+		FROM		codi_use_tb
+		WHERE		codi_seq = #{codi_seq}
+	</delete>
+	
+	<!--  -->
+	<select id="appMyDressRoomSelectList" parameterType="myDrsRmVo" resultType="myDrsRmVo">
+	    SELECT 		  s.codi_shr_seq
+		            , s.codi_shr_regtime
+		            , c.codi_seq
+		            , c.codi_img_route
+		            , c.mem_seq
+		            , m.mem_name
+		            , m.mem_img_route
+		            , m.mem_nicknme
+		            , (SELECT   count(ll.like_seq) 
+		               FROM   like_tb ll
+		               WHERE   ll.codi_shr_seq = s.codi_shr_seq) liked
+					, (SELECT   count(crr.codi_reply_seq)
+		               FROM   codi_reply_tb crr
+		               WHERE   crr.codi_shr_seq = s.codi_shr_seq) reply
+					, (SELECT count(like_seq)
+		               FROM    like_tb a
+		               WHERE   a.codi_shr_seq = s.codi_shr_seq
+		               AND      a.mem_seq = ${mem_seq}) as likeState
+		            , (SELECT count(scrap_codi_seq)
+		               FROM    scrap_codi_tb sct
+		               WHERE   sct.codi_shr_seq = s.codi_shr_seq
+		               AND      sct.mem_seq = ${mem_seq}) as scrapState
+		FROM codi_tb c
+		JOIN mem_tb m
+		ON c.mem_seq = m.mem_seq
+		LEFT JOIN codi_shr_tb s
+		ON c.codi_seq = s.codi_seq
+		
+		<choose>
+			<when test = "codi_type == 5">
+				 JOIN scrap_codi_tb sc
+				 ON s.codi_shr_seq = sc.codi_shr_seq
+				 WHERE sc.mem_seq = ${mem_seq}
+			</when>
+			<otherwise>
+				WHERE m.mem_seq = ${mem_seq}
+				AND c.codi_type = ${codi_type}
+			</otherwise>
+		</choose>
+		
+		ORDER BY s.codi_seq asc;
+	</select>
+</mapper>

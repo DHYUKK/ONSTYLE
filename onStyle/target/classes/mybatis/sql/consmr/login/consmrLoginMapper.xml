@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >   
+
+<mapper namespace="consmrLoginMapper">
+   
+    <resultMap id="memValues" type="memVo">
+         <result property="mem_seq" column="mem_seq"/>
+         <result property="mem_id" column="mem_id"/>
+         <result property="mem_pw" column="mem_pw"/>
+         <result property="mem_name" column="mem_name"/>
+         <result property="mem_birth" column="mem_birth"/>
+         <result property="mem_email" column="mem_email"/>
+         <result property="mem_adrs" column="mem_adrs"/>
+         <result property="mem_detail_adrs" column="mem_detail_adrs"/>
+         <result property="mem_ph" column="mem_ph"/>
+         <result property="mem_ph2" column="mem_ph2"/>
+         <result property="mem_ph3" column="mem_ph3"/>
+         <result property="mem_email" column="mem_email"/>
+         <result property="mem_email2" column="mem_email2"/>
+         <result property="mem_ecash" column="mem_ecash"/>
+         <result property="mem_postcd" column="mem_postcd"/>
+         <result property="mem_month" column="mem_month"/>
+         <result property="mem_date" column="mem_date"/>
+         <result property="mem_nicknme" column="mem_nicknme"/>
+         <result property="mem_img_route" column="mem_img_route"/>
+         <result property="mem_pw_confirm" column="mem_pw_confirm "/>
+         
+   </resultMap>
+   
+    <!-- 고객 로그인 -->
+       
+    <select id="memLogin" parameterType="memVo" resultType="memVo">
+   	  SELECT      m.mem_seq ,m.mem_name ,m.mem_id, m.mem_pw
+                  ,m.mem_nicknme, m.mem_ph, m.mem_email, m.mem_img_route
+                  ,m.mem_birth, m.mem_adrs, m.mem_detail_adrs, m.mem_ecash
+                  ,ms.mem_top_length, ms.mem_top_shouldr, ms.mem_top_bust
+                  ,ms.mem_top_tail_girth, ms.mem_top_slv_length, ms.mem_top_slv_opening
+                  ,ms.mem_top_slv_bill, ms.mem_bottom_length, ms.mem_bottom_waist
+                  ,ms.mem_bottom_hip, ms.mem_bottom_thigh, ms.mem_bottom_tail_girth
+                  ,ms.mem_bottom_front_width, ms.mem_bottom_back_width
+      FROM         mem_tb m
+ 	 LEFT JOIN	   mem_size_tb ms
+   	  ON           m.mem_seq = ms.mem_seq
+      WHERE        m.mem_id =#{mem_id}   
+      AND          m.mem_pw =#{mem_pw}      
+   </select>
+   
+   <select id="selectseq" resultType="int">
+   		SELECT 		IFNULL(MAX(mem_seq),0)+1 AS mem_seq
+   		
+   		FROM		mem_tb;
+   </select>
+   
+   <!-- 회원가입 -->
+   <insert id="memberInsert" parameterType="memVo"> 
+       INSERT
+       INTO        mem_tb(
+                   mem_seq
+                  , mem_id
+                  , mem_name
+                  , mem_nicknme
+                  , mem_pw
+                  , mem_email
+                  , mem_ph
+                  , mem_birth
+                  , mem_postcd
+                  , mem_adrs
+                  , mem_detail_adrs
+                  , mem_img_route
+                   )
+                   
+      VALUES      ( #{mem_seq}
+                  , #{mem_id}   
+                  , #{mem_name}
+                  , #{mem_nicknme}   
+                  , #{mem_pw}
+                  , CONCAT(#{mem_email},'@',#{mem_email2})
+                  , CONCAT(#{mem_ph},'-',#{mem_ph2},'-',#{mem_ph3})
+                  , #{mem_birth}
+                  , #{mem_postcd}
+                  , #{mem_adrs} 
+                  , #{mem_detail_adrs}
+                  <choose>
+                  	<when test="mem_img_route==null">
+                  		,"/resources/consmr/login/img/basicProfile.png"
+                  	</when>
+                  	<otherwise>
+                  		, #{mem_img_route}
+                  	</otherwise>
+                  </choose> 
+                  );
+   </insert>
+<!--    신체사이즈 -->
+   <insert id="memSizeInsert" parameterType="memVo">
+   		INSERT
+   		INTO	mem_size_tb(
+   				mem_size_seq
+   				, mem_top_length
+   				, mem_top_shouldr
+   				, mem_top_bust
+   				, mem_top_tail_girth
+   				, mem_top_slv_length
+   				, mem_top_slv_opening
+   				, mem_top_slv_bill
+   				, mem_bottom_length
+   				, mem_bottom_waist
+   				, mem_bottom_hip
+   				, mem_bottom_thigh
+   				, mem_bottom_tail_girth
+   				, mem_bottom_front_width
+   				, mem_bottom_back_width
+   				, mem_seq
+   				)
+   		VALUES ((SELECT IFNULL(MAX(m.mem_size_seq),0)+1 AS mem_size_seq FROM mem_size_tb as m)
+   				<if test="mem_top_length ==''">
+   					,0
+   				</if>
+   				<if test="mem_top_length != ''">
+   					,${mem_top_length}
+   				</if>
+   				<if test="mem_top_shouldr==''">
+   					,0
+   				</if>
+   				<if test="mem_top_shouldr !=''">
+   				 	,${mem_top_shouldr}
+   				</if>
+   				<if test="mem_top_bust == ''">
+   					,0
+   				</if>
+   				<if test="mem_top_bust !=''">
+   					, ${mem_top_bust}
+   				</if>
+   				<if test="mem_top_tail_girth==''">
+   					,0
+   				</if>
+   				<if test="mem_top_tail_girth !=''">
+   					, ${mem_top_tail_girth}
+   				</if>
+   				<if test="mem_top_slv_length==''">
+   					,0
+   				</if>
+   				<if test="mem_top_slv_length !=''">
+   					, ${mem_top_slv_length}
+   				</if>
+   				<if test="mem_top_slv_opening == ''">
+   					,0
+   				</if>
+   				<if test="mem_top_slv_opening !=''">
+   					, ${mem_top_slv_opening}
+   				</if>
+   				<if test="mem_top_slv_bill==''">
+   				 	,0
+   				</if>
+   				<if test="mem_top_slv_bill !=''">
+   					, ${mem_top_slv_bill}
+   				</if>
+   				<if test="mem_bottom_length ==''">
+   					,0
+   				</if>
+   				<if test="mem_bottom_length !=''">
+   					, ${mem_bottom_length}
+   				</if>
+   				<if test="mem_bottom_waist == ''">
+   					,0
+   				</if>
+   				<if test="mem_bottom_waist !=''">
+   					, ${mem_bottom_waist}
+   				</if>
+   				<if test="mem_bottom_hip ==''">
+   					,0
+   				</if>
+   				<if test="mem_bottom_hip !=''">
+	   				, ${mem_bottom_hip}
+   				</if>
+   				<if test="mem_bottom_thigh ==''">
+   					,0
+   				</if>
+   				<if test="mem_bottom_thigh !=''">
+   					, ${mem_bottom_thigh}
+   				</if>
+   				<if test="mem_bottom_tail_girth == ''">
+   					,0
+   				</if>
+   				<if test="mem_bottom_tail_girth !=''">
+   					, ${mem_bottom_tail_girth}
+   				</if>
+   				<if test="mem_bottom_front_width ==''">
+   					,0
+   				</if>
+   				<if test="mem_bottom_front_width != ''">
+   					, ${mem_bottom_front_width}
+   				</if>
+   				<if test="mem_bottom_back_width ==''">
+   					,0
+   				</if>
+   				<if test="mem_bottom_back_width != ''">
+   					, ${mem_bottom_back_width}
+   				</if>
+   				, ${mem_seq}
+   				);
+   </insert>
+<!--    아이디중복체크 -->
+ <select id="idcheck" parameterType="memVo" resultType="int">
+ 	select	count(*)
+ 	from	mem_tb
+ 	where 	mem_id=#{mem_id}
+ 	;
+ </select>   
+<!--  닉네임중복체크 -->
+ <select id="nicknmecheck" parameterType="memVo" resultType="int">
+ 	select	count(*)
+ 	from	mem_tb
+ 	where	mem_nicknme = #{mem_nicknme}
+ 	;
+ </select>
+ 
+</mapper>

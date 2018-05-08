@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >   
+
+<mapper namespace="consmrOrdrMapper">   
+   <!-- 주문조회(주문내역조회) -->
+   <select id="allselect" parameterType="odBerkVo" resultType="odBerkVo">
+      SELECT       mem_seq
+                , order_date
+                , prodct_img_route1
+                , prodct_nme
+                , order_breakdwn_prodct_quanty
+                , order_sum
+                , order_state
+                , ok.order_breakdwn_prodct_size
+                , od.order_seq AS order_seq
+                   
+      FROM        order_breakdwn_tb ok
+               , order_tb od
+               , prodct pd
+               
+      WHERE       ok.order_seq = od.order_seq
+      AND         ok.prodct_seq = pd.prodct_seq
+      AND         mem_seq = #{mem_seq}
+      <choose>
+          <when test = "oneDatepicker !=null or twoDatepicker !=null">
+          AND order_date between #{oneDatepicker} and #{twoDatepicker}
+          </when>
+       </choose>
+      order by order_date desc
+   </select>
+   <!-- 주문 상세보기조l -->
+   <select id="odbreakdetail" parameterType="odBerkVo" resultType="odBerkVo">
+      SELECT  od.order_seq
+            , order_date
+            , me.mem_name AS mem_name
+            , order_dlivy_num
+            , order_paree
+            , mem_ph
+            , od.mem_adrs AS mem_adrs
+            , order_msg
+            , order_sum
+            , prodct_nme
+            , order_breakdwn_prodct_quanty
+            , pd.prodct_price AS prodct_price
+            , order_state
+            , order_methd
+            
+      FROM    order_breakdwn_tb ok
+            , order_tb od
+            , prodct pd
+            , mem_tb me
+            
+      WHERE   ok.order_seq = od.order_seq
+      AND     ok.prodct_seq = pd.prodct_seq
+      AND     me.mem_seq = od.mem_seq
+      AND      od.order_seq = #{order_seq};
+   </select>
+    <!-- 적립금조회 -->
+	<select id="poinselect" parameterType="ecashVo" resultType="ecashVo">
+		SELECT		od.order_date
+					, ea.ecash_acc
+					, od.order_seq as order_seq
+					, ecash_msg
+		FROM  		order_tb od
+					, ecash_tb ea 
+		WHERE  		od.mem_seq = ea.mem_seq
+		AND  		od.mem_seq = #{mem_seq};
+	</select>
+	<!-- 주문자 조회 -->
+	<select id="orderMemInfo" parameterType="memVo" resultType="memVo">
+		SELECT		mem_seq, mem_id, mem_name, mem_nicknme, mem_birth, mem_postcd, mem_adrs, mem_detail_adrs, mem_ph, mem_email, mem_blckLst_chk, mem_ecash, mem_img_route
+		FROM		mem_tb
+		WHERE		mem_seq = #{mem_seq};
+	</select>
+	
+<!-- 주문조회(주문내역조회) -->
+   <select id="exchangelselect" parameterType="odBerkVo" resultType="odBerkVo">
+      SELECT       mem_seq
+                , order_date
+                , prodct_img_route1
+                , prodct_nme
+                , order_breakdwn_prodct_quanty
+                , order_sum
+                , order_state
+                , od.order_seq AS order_seq
+                , ok.order_breakdwn_prodct_size
+                   
+      FROM        order_breakdwn_tb ok
+               , order_tb od
+               , prodct pd
+               
+      WHERE       ok.order_seq = od.order_seq
+      AND         ok.prodct_seq = pd.prodct_seq
+      AND         mem_seq = #{mem_seq}
+      AND		  (od.order_state like '%취소%' or od.order_state like '교환' or od.order_state like '반품')
+      <choose>
+          <when test = "oneDatepicker !=null or twoDatepicker !=null">
+             AND   order_date between #{oneDatepicker} and #{twoDatepicker};
+          </when>
+       </choose>
+   </select>
+   
+<!-- 주문 성공 후 주문 정보를 주문테이블에 등록 -->
+	<insert id="orderSuccess" parameterType="ordrVo" useGeneratedKeys="true" keyProperty="order_seq">
+		INSERT INTO order_tb (order_seq
+							 , order_date
+		                     , order_state
+		                     , order_methd
+		                     , order_sum
+		                     , order_use_ecash_sum
+		                     , mem_postcd
+		                     , mem_adrs
+		                     , mem_detail_adrs
+		                     , order_msg
+		                     , mem_seq
+		                     , order_paree
+		                     , order_paree_ph
+		                     , order_paree_email)
+		VALUES		((SELECT IFNULL(MAX(a.order_seq), 0) + 1 FROM order_tb a)
+							 , #{order_date}
+		                     , #{order_state}
+		                     , #{order_methd}
+		                     , #{order_sum}
+		                     , 0
+		                     , #{mem_postcd}
+		                     , #{mem_adrs}
+		                     , #{mem_detail_adrs}
+		                     , #{order_msg}
+		                     , #{mem_seq}
+		                     , #{order_paree}
+		                     , #{order_paree_ph}
+		                     , #{order_paree_email});
+	</insert>
+
+<!-- 주문 정보 등록 후 주문 내역 테이블에 주문한 상품 정보 all 등록 -->
+	<insert id="orderBreakdwnAllInsert" parameterType="ordrVo">
+		INSERT INTO order_breakdwn_tb (prodct_price, order_breakdwn_prodct_quanty, order_breakdwn_prodct_size, prodct_color_nme, prodct_seq, order_seq)
+		select p.prodct_price, s.shpbag_quanty, s.shpbag_size, s.shpbag_color, p.prodct_seq, #{order_seq}
+		from shpbag_tb s, prodct p
+		where s.prodct_seq = p.prodct_seq
+		and s.mem_seq = #{mem_seq};
+	</insert>
+
+<!-- 주문 정보 등록 후 주문 내역 테이블에 주문한 상품 정보 one 등록 -->	
+	<insert id="orderBreakdwnOneInsert" parameterType="ordrVo">
+		INSERT INTO order_breakdwn_tb (prodct_price, order_breakdwn_prodct_quanty, order_breakdwn_prodct_size, prodct_color_nme, prodct_seq, order_seq)
+		VALUES 						  (#{prodct_price}, #{order_breakdwn_prodct_quanty}, #{order_breakdwn_prodct_size}, #{prodct_color_nme}, #{prodct_seq}, #{order_seq})
+	</insert>
+	<delete id="shpListDelete" parameterType="ordrVo">
+	    DELETE
+	    FROM shpbag_tb
+	    WHERE prodct_seq = #{prodct_seq};
+	</delete>
+</mapper>

@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >	
+
+<mapper namespace="adminCodiReqstMapper">
+    <resultMap id="reqstValues" type="adminReqstVo">
+	</resultMap>
+
+   	<select id="adminCodiReqstList" parameterType="adminReqstVo" resultMap="reqstValues">
+    SELECT 			rq.codi_reqst_seq
+    				, m.mem_seq
+    				, m.mem_id
+    				, m.mem_name
+    				, m.mem_nicknme
+    				, c1.codi_img_route as reqst_codi_img_route
+    				, IFNULL(c2.codi_img_route, "/resources/admin/codi/codiReqst/img/answerReady.PNG") as answr_codi_img_route
+    				, rq.codi_seq
+    				, rq.codi_reqst_date
+    				, rq.codi_reqst_state
+	FROM 			codi_reqst_tb rq 
+	JOIN 			codi_tb c1
+	ON 				rq.codi_seq = c1.codi_seq 
+	LEFT JOIN		codi_answr_tb an
+    ON				rq.codi_reqst_seq = an.codi_reqst_seq
+    LEFT JOIN		codi_tb c2
+    ON				an.codi_seq = c2.codi_seq
+	JOIN 			mem_tb m 
+	ON 				c1.mem_seq = m.mem_seq
+	<choose>	
+		<when test = "searchCondition1=='rq.codi_reqst_seq' and searchContent!=''">
+	WHERE			${searchCondition1} = ${searchContent}
+		</when>
+		<otherwise>
+  	WHERE			${searchCondition1} LIKE '%${searchContent}%'
+		</otherwise>
+	</choose>
+	
+	<!-- 요청상태 검색조건 -->
+	<choose>	
+		<when test = "radioValue==2">
+	AND				codi_reqst_state = 'n'
+		</when>
+		<when test = "radioValue==3">
+	AND				codi_reqst_state = 'y'
+		</when>
+	</choose>
+	
+	<!-- 날짜 검색조건 -->
+	<if test="(oneDatepicker != null and twoDatepicker != null) and (oneDatepicker != '' and twoDatepicker != '')"> 	<!-- 날짜 검색조건 -->
+	AND				codi_reqst_date BETWEEN #{oneDatepicker} AND #{twoDatepicker}
+	</if>
+	
+	ORDER BY 		codi_reqst_date desc
+	LIMIT			#{recordCountPerPage} OFFSET #{firstRecordIndex}	<!-- 한 페이지당 게시되는 게시물 건 수 OFFSET 첫 페이지 인덱스 번호(글 번호) -->
+	
+    </select>
+    
+   	<!-- 페이징 : 전체 게시글 조회 -->
+   	<select id="codiReqstListCount" parameterType="adminReqstVo" resultType="int">
+    SELECT 			COUNT(codi_reqst_seq) as totalRecordCount
+	FROM 			codi_reqst_tb rq 
+	JOIN 			codi_tb c
+	ON 				rq.codi_seq = c.codi_seq 
+	JOIN 			mem_tb m 
+	ON 				c.mem_seq = m.mem_seq
+	<choose>	
+		<when test = "searchCondition1=='rq.codi_reqst_seq' and searchContent!=''">
+	WHERE			${searchCondition1} = ${searchContent}
+		</when>
+		<otherwise>
+  	WHERE			${searchCondition1} LIKE '%${searchContent}%'
+		</otherwise>
+	</choose>	
+	<!-- 요청상태 검색조건 -->
+	<choose>	
+		<when test = "radioValue==2">
+	AND				codi_reqst_state = 'n'
+		</when>
+		<when test = "radioValue==3">
+	AND				codi_reqst_state = 'y'
+		</when>
+	</choose>
+	
+	<!-- 날짜 검색조건 -->
+	<if test="(oneDatepicker != null and twoDatepicker != null) and (oneDatepicker != '' and twoDatepicker != '')"> 	<!-- 날짜 검색조건 -->
+	AND				codi_reqst_date BETWEEN #{oneDatepicker} AND #{twoDatepicker}
+	</if>
+	
+	ORDER BY 		codi_reqst_date
+    </select>
+    
+   	<!-- 요청삭제 -->
+	<delete id="adminReqstDelete" parameterType="adminReqstVo">
+		DELETE 
+		FROM		codi_tb
+		WHERE		codi_seq IN (
+					<foreach collection="reqstCheckGroup" item="item" separator=" , "> 
+						(SELECT codi_seq FROM codi_reqst_tb WHERE codi_reqst_seq = #{item}), 
+						(SELECT codi_seq FROM codi_answr_tb WHERE codi_reqst_seq = #{item})
+					</foreach>
+					)
+	</delete>
+	
+	<!-- 요청코디 상세조회 : 요청 조회 -->
+	<select id="reqstInfo" parameterType="adminReqstVo" resultMap="reqstValues">
+		SELECT 			m.mem_seq
+						, m.mem_img_route
+						, m.mem_nicknme
+						, rq.codi_reqst_seq
+						, rq.codi_seq as reqstCodi_seq
+						, rq.codi_reqst_contnt
+						, rc.codi_img_route as reqst_codi_img_route
+						, rq.codi_reqst_state
+		FROM 			codi_reqst_tb rq
+		JOIN 			codi_tb rc
+		ON 				rq.codi_seq = rc.codi_seq
+		JOIN 			mem_tb m
+		ON 				rc.mem_seq = m.mem_seq
+		WHERE 			rq.codi_reqst_seq = #{codi_reqst_seq};
+	</select>
+	
+	<!-- 요청코디 상세조회 : 답변 조회-->
+	<select id="answrInfo" parameterType="adminReqstVo" resultMap="reqstValues">
+		SELECT 			an.codi_answr_seq
+						, an.codi_seq as answrCodi_seq
+						, an.answr_contnt
+						, ac.codi_img_route as answr_codi_img_route
+						, ac.codi_type
+		FROM 			codi_answr_tb an
+		JOIN 			codi_tb ac
+		ON 				an.codi_seq = ac.codi_seq
+		WHERE 			an.codi_reqst_seq = #{codi_reqst_seq};
+	</select>
+	
+	<!-- 수정 코디요청 멘트 조회 -->
+	<select id="codiAnswrReadInfo" parameterType="adminReqstVo" resultMap="reqstValues">
+	SELECT 			codi_answr_seq
+					, answr_contnt
+					, an.codi_seq					as answrCodi_seq
+					, codi_reqst_seq
+                    , mem_seq
+	FROM 			codi_answr_tb an
+	JOIN			codi_tb c
+    ON				an.codi_seq = c.codi_seq
+	WHERE 			codi_reqst_seq = #{codi_reqst_seq};
+	</select>
+</mapper>

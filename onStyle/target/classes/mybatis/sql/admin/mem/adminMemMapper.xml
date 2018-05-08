@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >	
+
+<mapper namespace="adminMemMapper">
+ <resultMap id="memValues" type="adminMemVo">
+ </resultMap>
+ <resultMap id="memOrdrValues" type="odBerkVo"></resultMap>
+ 
+ <select id="adminMemListCount" parameterType="adminMemVo" resultType="int">
+
+    select		count(*) as totalRecordCount
+    from		mem_tb
+    where		mem_seq != 6
+    <if test="searchCondition1 !='' and searchCondition1 !=null">
+    and		${searchCondition1} like '%${searchContent}%'
+    </if>
+    ;
+ </select>
+ 
+ <select id="adminMemList" parameterType="adminMemVO" resultMap="memValues">
+ 	select		m.mem_seq
+ 				,m.mem_id
+ 				,m.mem_name
+ 				,m.mem_nicknme
+ 				,ifnull(m.mem_ph, '없음') as mem_ph
+ 				,ifnull(m.mem_img_route, "/resources/consmr/codi/codiShr/img/basicProfile.PNG") as mem_img_route
+ 				,m.mem_ecash
+ 				,m.mem_birth
+ 				,m.mem_postcd
+ 				,m.mem_adrs
+ 				,ifnull(m.mem_detail_adrs, '없음') as mem_detail_adrs
+ 				,ifnull(m.mem_email, '없음') as mem_email
+ 				,ifnull(s.mem_top_length, '0') as mem_top_length
+ 				,ifnull(s.mem_top_shouldr, '0') as mem_top_shouldr
+ 				,ifnull(s.mem_top_bust, '0') as mem_top_bust
+ 				,ifnull(s.mem_top_tail_girth, '0') as mem_top_tail_girth
+ 				,ifnull(s.mem_top_slv_length, '0') as mem_top_slv_length
+ 				,ifnull(s.mem_top_slv_opening, '0') as mem_top_slv_opening
+ 				,ifnull(s.mem_top_slv_bill, '0') as mem_top_slv_bill
+ 				,ifnull(s.mem_bottom_length, '0') as mem_bottom_length
+ 				,ifnull(s.mem_bottom_waist, '0') as mem_bottom_waist
+ 				,ifnull(s.mem_bottom_hip, '0') as mem_bottom_hip
+ 				,ifnull(s.mem_bottom_thigh, '0') as mem_bottom_thigh
+ 				,ifnull(s.mem_bottom_tail_girth, '0') as mem_bottom_tail_girth
+ 				,ifnull(s.mem_bottom_front_width, '0') as mem_bottom_front_width
+ 				,ifnull(s.mem_bottom_back_width, '0') as mem_bottom_back_width
+	from		mem_tb m
+	left join	mem_size_tb s
+	on			m.mem_seq = s.mem_seq
+	where		m.mem_seq != 6
+	<if  test="searchCondition1 !='' and searchCondition1 !=null">
+	and		${searchCondition1} like '%${searchContent}%'
+	</if>
+	order by 	m.mem_seq
+	limit		#{recordCountPerPage} offset #{firstRecordIndex};
+ </select>  
+ <select id="adminMemRead" parameterType="adminMemVO" resultType="adminMemVO">
+ select		m.mem_seq
+ 				,m.mem_id
+ 				,m.mem_name
+ 				,m.mem_nicknme
+ 				,ifnull(m.mem_ph, '없음') as mem_ph
+ 				,ifnull(m.mem_img_route, "/resources/consmr/codi/codiShr/img/basicProfile.PNG") as mem_img_route
+ 				,m.mem_ecash
+ 				,m.mem_birth
+ 				,m.mem_postcd
+ 				,m.mem_adrs
+ 				,ifnull(m.mem_detail_adrs, '없음') as mem_detail_adrs
+ 				,ifnull(m.mem_email, '없음') as mem_email
+ 				,ifnull(s.mem_top_length, '0') as mem_top_length
+ 				,ifnull(s.mem_top_shouldr, '0') as mem_top_shouldr
+ 				,ifnull(s.mem_top_bust, '0') as mem_top_bust
+ 				,ifnull(s.mem_top_tail_girth, '0') as mem_top_tail_girth
+ 				,ifnull(s.mem_top_slv_length, '0') as mem_top_slv_length
+ 				,ifnull(s.mem_top_slv_opening, '0') as mem_top_slv_opening
+ 				,ifnull(s.mem_top_slv_bill, '0') as mem_top_slv_bill
+ 				,ifnull(s.mem_bottom_length, '0') as mem_bottom_length
+ 				,ifnull(s.mem_bottom_waist, '0') as mem_bottom_waist
+ 				,ifnull(s.mem_bottom_hip, '0') as mem_bottom_hip
+ 				,ifnull(s.mem_bottom_thigh, '0') as mem_bottom_thigh
+ 				,ifnull(s.mem_bottom_tail_girth, '0') as mem_bottom_tail_girth
+ 				,ifnull(s.mem_bottom_front_width, '0') as mem_bottom_front_width
+ 				,ifnull(s.mem_bottom_back_width, '0') as mem_bottom_back_width
+	from		mem_tb m
+	left join	mem_size_tb s
+	on			m.mem_seq = s.mem_seq
+	where		m.mem_seq = ${mem_seq}
+	;
+ </select>  
+ 
+ <select id="adminMemOrdrList" parameterType="adminMemVO" resultMap="memOrdrValues">
+	SELECT       mem_seq
+                , order_date
+                , prodct_img_route1
+                , prodct_nme
+                , order_breakdwn_prodct_quanty
+                , order_sum
+                , order_state
+                , od.order_seq AS order_seq
+                   
+      FROM        order_breakdwn_tb ok
+               , order_tb od
+               , prodct pd
+               
+      WHERE       ok.order_seq = od.order_seq
+      AND         ok.prodct_seq = pd.prodct_seq
+      AND         mem_seq = #{mem_seq}
+      ORDER BY	  order_date desc;
+     
+ </select>
+</mapper>

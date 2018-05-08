@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+
+<mapper namespace="consmrProdctMapper">
+<!-- 장바구니 담기 -->
+	<insert id="cartInsert" parameterType="shpbagVo">
+		INSERT INTO shpbag_tb(shpbag_seq, shpbag_size, shpbag_quanty, shpbag_color, prodct_seq, mem_seq)
+		VALUES(
+				(SELECT IFNULL(MAX(sh.shpbag_seq),0)+1 FROM shpbag_tb sh),
+				#{shpbag_size},
+				#{shpbag_quanty},
+				#{shpbag_color},
+				#{prodct_seq},
+				#{mem_seq}
+		)
+	</insert>
+	 
+<!-- 	상단 탭 클릭시 상품조회 -->
+	<select id="prodctSelect" resultType="prodctVo" parameterType="prodctVo">
+				SELECT	a.prodct_seq
+						, a.prodct_sell_state
+						, a.prodct_img_route1
+						, a.prodct_state
+						, a.prodct_disply_state
+						, a.prodct_nme
+						, a.prodct_price
+				FROM	(SELECT	p.prodct_seq
+								, p.prodct_sell_state
+								, p.prodct_img_route1
+								, p.prodct_state
+								, p.prodct_disply_state
+								, p.category_seq
+								, p.prodct_nme
+								, p.prodct_price
+						 FROM	prodct p
+   				    	 LEFT JOIN	disply_tb d
+				    	 ON		p.prodct_seq = d.prodct_seq
+				    	 JOIN 	category_tb c
+				    	 ON		p.category_seq = c.category_seq
+						 WHERE	p.prodct_disply_state = 'Y'
+						 OR		p.prodct_disply_state = 'M'
+				    	 ORDER BY	d.big_group_disply asc) a
+			<choose>
+				<when test="prodct_state == null">
+					<if test="category_seq != 0">
+						<choose>
+							<when test="category_seq == 1 or category_seq == 2">
+								WHERE category_seq in ((SELECT	category_seq 
+														FROM	category_tb 
+														WHERE	category_sort = #{category_seq}))
+							</when>	
+							<when test="category_seq != 1 or category_seq != 2">
+								WHERE category_seq = ${category_seq}
+							</when>
+						</choose>
+					</if>
+				</when>
+				<when test="prodct_state != null">
+					WHERE prodct_state='${prodct_state}'
+					<if test="category_seq != 0">
+						<choose>
+							<when test="category_seq == 1 or category_seq == 2">
+								AND category_seq in ((SELECT	category_seq 
+													 FROM 		category_tb 
+													 WHERE		category_sort = #{category_seq}))
+							</when>	
+							<when test="category_seq != 1 or category_seq != 2">
+								AND category_seq = ${category_seq}
+							</when>
+						</choose>
+					</if>
+				</when>
+			</choose>
+
+	</select>
+	
+<!-- 	상품 상세보기 정보 -->
+	<select id="prodctView" resultType="prodctVo" parameterType="prodctVo">
+			SELECT p.prodct_seq, p.prodct_nme, p.prodct_img_route1, p.prodct_img_route2, p.prodct_img_route3, p.prodct_img_route4,
+					p.prodct_regtime, p.admin_prodct_nme, p.prodct_disply_state, p.prodct_sell_state, p.prodct_state, p.prodct_price, p.suplr_price, p.prodct_detail,
+					p.client_seq, p.category_seq
+			FROM prodct p
+			WHERE p.prodct_seq = #{prodct_seq}
+	</select>
+<!-- 	상품 색상 조회 -->
+	<select id="selectProdctColor" resultType="prodctVo" parameterType="prodctVo">
+			SELECT  prodct_color_seq, prodct_color_nme, (select count(prodct_color_seq) from prodct_color_tb where prodct_seq = #{prodct_seq}) as colorCount
+			FROM prodct_color_tb			
+			WHERE prodct_seq = #{prodct_seq}	
+	</select>
+<!-- 	상품치수조회 -->
+	<select id="selectProdctSize" resultType="prodctVo" parameterType="prodctVo">
+			<choose>
+				<when test="category_seq == 1 or category_seq == 3 or category_seq == 5 or category_seq == 6 or category_seq == 7 or category_seq == 8">			
+					SELECT  top_size_seq, top_bust, top_length, top_shouldr, top_size_nme, top_size_seq, top_slv_bill,
+							top_slv_length, top_slv_opening, top_tail_girth
+					FROM top_size_tb
+				</when>
+				<when test="category_seq == 2 or category_seq == 9 or category_seq == 10">			
+					SELECT  bottom_size_seq, bottom_size_nme, bottom_length, bottom_waist, bottom_hip, bottom_thigh, bottom_tail_girth,
+							bottom_front_width, bottom_back_width
+					FROM bottom_size_tb
+				</when>
+			</choose>
+			WHERE prodct_seq = ${prodct_seq}	
+	</select>
+<!-- 	해당상품 베스트코디조회 -->
+	<select id ="selectProdctBestCodi" resultType="codiShrVo" parameterType="codiShrVo">
+		SELECT	max(b.likeNum) as liked, b.codi_shr_seq, b.codi_shr_regtime, b.codi_img_route, b.mem_name, b.mem_img_route, b.reply_count as reply, b.likeState, b.codi_seq, b.mem_seq
+		FROM (SELECT a.codi_shr_seq, cs.codi_shr_regtime, c.codi_img_route, 
+					m.mem_img_route, m.mem_name, c.mem_seq, cs.codi_seq,
+					max(a.likeNum) as likeNum, count(cr.codi_reply_seq) as reply_count, a.likeState 
+			  FROM(SELECT codi_shr_seq, count(*) as likeNum, (SELECT max(c.likeState)
+															   FROM (SELECT count(like_seq) as likeState
+																	 FROM like_tb
+																	 WHERE codi_shr_seq = (select ff.codi_shr_seq
+																							from(
+																							select max(f.likeState) as likeCount, f.codi_shr_seq
+																							from (SELECT distinct cs.codi_shr_seq, count(l.like_seq) as likeState
+																							FROM prodct p
+																							JOIN  codi_use_tb cu
+																							ON p.prodct_seq = cu.prodct_seq
+																							JOIN codi_shr_tb cs
+																							ON cs.codi_seq = cu.codi_seq
+																							JOIN codi_tb c
+																							ON c.codi_seq = cu.codi_seq
+																							JOIN like_tb l
+																							ON l.codi_shr_seq = cs.codi_shr_seq
+																							WHERE p.prodct_seq = #{prodct_seq}
+																							group by codi_shr_seq) f) ff)																						
+																
+																<choose>															
+																	<when test="mem_seq != 0">
+																		AND mem_seq = #{mem_seq}
+																	</when>
+																</choose>
+																GROUP BY codi_shr_seq) c) as likeState
+																													
+				  FROM like_tb
+				  WHERE codi_shr_seq in (SELECT cs.codi_shr_seq
+										FROM prodct p
+										JOIN codi_use_tb cu
+										ON p.prodct_seq = cu.prodct_seq
+										JOIN codi_shr_tb cs
+										ON cs.codi_seq = cu.codi_seq
+										WHERE p.prodct_seq = #{prodct_seq})
+				  GROUP BY codi_shr_seq) a
+			JOIN codi_shr_tb cs
+			ON a.codi_shr_seq = cs.codi_shr_seq
+			JOIN codi_tb c
+			ON cs.codi_seq = c.codi_seq
+			JOIN codi_reply_tb cr
+			ON a.codi_shr_seq = cr.codi_shr_seq
+            JOIN mem_tb m
+            ON m.mem_seq = c.mem_seq
+            WHERE a.likeNum >= 30
+			GROUP BY a.codi_shr_seq) as b;
+	</select>
+
+	<select id="crtselect" parameterType="shpbagVo" resultType="shpbagVo">
+		SELECT		 me.mem_seq
+					, me.mem_name
+					, prodct_img_route1
+					, pd.prodct_nme as prodct_nme
+					, pd.prodct_price as prodct_price
+					, sh.shpbag_quanty as shpbag_quanty
+					, sh.shpbag_seq
+					, sh.shpbag_color
+					, sh.prodct_seq
+					, sh.shpbag_size
+					
+					
+		FROM   		shpbag_tb sh
+					, prodct pd
+					, mem_tb me
+					
+		WHERE		sh.prodct_seq = pd.prodct_seq
+		AND	   		sh.mem_seq = me.mem_seq
+		AND			me.mem_seq = #{mem_seq};
+	</select>
+	
+	<delete id="deletes"  parameterType="shpbagVo">
+	    DELETE
+	    FROM shpbag_tb
+	    WHERE shpbag_seq IN
+	    <foreach collection="shpbag_seq_s" item="shpbag_seq_s" open="(" separator="," close=")">
+			${shpbag_seq_s}
+      	</foreach>
+	</delete>
+</mapper>

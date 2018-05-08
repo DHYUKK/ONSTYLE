@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >   
+
+<mapper namespace="consmrMemMapper">
+   
+<!-- 로그인확인 -->
+   <select id="passCheck" parameterType="memVO" resultType="memVo">
+      SELECT         mem_seq
+      FROM         mem_tb
+      WHERE         mem_seq = #{mem_seq}
+      And            mem_pw = #{mem_pw}
+   </select>
+   
+<!-- join화면 정보 조회 -->
+   <select id="joinDetail" parameterType="memVO" resultType="memVo">
+      SELECT        m.mem_seq
+      			  , mem_img_route
+                  , mem_id
+                  , mem_pw
+                  , mem_name
+                  , mem_nicknme
+                  , mem_birth
+                  , mem_postcd
+                  , mem_adrs
+                  , mem_detail_adrs
+                  , mem_ph
+                  , SUBSTRING(mem_email,1,instr(mem_email,'@')-1) AS mem_email
+                  , SUBSTRING(mem_email, INSTR(mem_email,'@') + 1, CHAR_LENGTH(mem_email) - INSTR(mem_email,'@')) AS mem_email2
+                  , ms.mem_top_length, ms.mem_top_shouldr
+                  , ms.mem_top_bust
+                  , ms.mem_top_tail_girth
+                  , ms.mem_top_slv_length
+                  , ms.mem_top_slv_opening
+                  , ms.mem_top_slv_bill
+                  , ms.mem_bottom_length
+                  , ms.mem_bottom_waist
+                  , ms.mem_bottom_hip
+                  , ms.mem_bottom_thigh
+                  , ms.mem_bottom_tail_girth
+                  , ms.mem_bottom_front_width
+                  , ms.mem_bottom_back_width
+                  
+      FROM         mem_tb m
+      LEFT JOIN	   mem_size_tb ms
+      ON		   m.mem_seq=ms.mem_seq
+      WHERE         m.mem_seq = #{mem_seq}
+   </select>
+
+<!-- join화면 정보 수정 ?! -->
+   <update id="upFinish" parameterType="memVo">
+      UPDATE          mem_tb
+      SET          mem_pw= #{mem_pw}
+      			  <choose>
+                  	<when test="mem_img_route==null">
+                  ,mem_img_route ="/resources/consmr/login/img/basicProfile.png"
+                  	</when>
+                  	<otherwise>
+                  , mem_img_route= #{mem_img_route}
+                  	</otherwise>
+                  </choose> 
+                  , mem_birth = #{mem_birth}
+                  , mem_postcd = #{mem_postcd}
+                  , mem_adrs = #{mem_adrs}
+                  , mem_detail_adrs = #{mem_detail_adrs}
+                  , mem_ph = CONCAT(#{mem_ph},'-',#{mem_ph2},'-',#{mem_ph3}) 
+                  , mem_email = CONCAT(#{mem_email},'@',#{mem_email2})
+                  
+      WHERE          mem_seq = #{mem_seq};
+   </update>
+   <update id="upFinish2" parameterType="memVo">
+       UPDATE          mem_size_tb
+      SET          
+                <if test="mem_top_length ==''">
+   					 mem_top_length = '0'
+   				</if>
+   				<if test="mem_top_length != ''">
+   					 mem_top_length = ${mem_top_length}
+   				</if>
+   				<if test="mem_top_shouldr==''">
+   					, mem_top_shouldr = '0'
+   				</if>
+   				<if test="mem_top_shouldr !=''">
+   				 	, mem_top_shouldr=${mem_top_shouldr}
+   				</if>
+   				<if test="mem_top_bust == ''">
+   					, mem_top_bust='0'
+   				</if>
+   				<if test="mem_top_bust !=''">
+   					, mem_top_bust=${mem_top_bust}
+   				</if>
+   				<if test="mem_top_tail_girth==''">
+   					, mem_top_tail_girth='0'
+   				</if>
+   				<if test="mem_top_tail_girth !=''">
+   					, mem_top_tail_girth=${mem_top_tail_girth}
+   				</if>
+   				<if test="mem_top_slv_length==''">
+   					, mem_top_slv_length ='0'
+   				</if>
+   				<if test="mem_top_slv_length !=''">
+   					, mem_top_slv_length=${mem_top_slv_length}
+   				</if>
+   				<if test="mem_top_slv_opening == ''">
+   					, mem_top_slv_opening='0'
+   				</if>
+   				<if test="mem_top_slv_opening !=''">
+   					, mem_top_slv_opening=${mem_top_slv_opening}
+   				</if>
+   				<if test="mem_top_slv_bill==''">
+   				 	, mem_top_slv_bill='0'
+   				</if>
+   				<if test="mem_top_slv_bill !=''">
+   					, mem_top_slv_bill=${mem_top_slv_bill}
+   				</if>
+   				<if test="mem_bottom_length ==''">
+   					, mem_bottom_lengt='0'
+   				</if>
+   				<if test="mem_bottom_length !=''">
+   					, mem_bottom_length= ${mem_bottom_length}
+   				</if>
+   				<if test="mem_bottom_waist == ''">
+   					, mem_bottom_waist='0'
+   				</if>
+   				<if test="mem_bottom_waist !=''">
+   					, mem_bottom_waist=${mem_bottom_waist}
+   				</if>
+   				<if test="mem_bottom_hip ==''">
+   					, mem_bottom_hip='0'
+   				</if>
+   				<if test="mem_bottom_hip !=''">
+	   				, mem_bottom_hip=${mem_bottom_hip}
+   				</if>
+   				<if test="mem_bottom_thigh ==''">
+   					, mem_bottom_thigh='0'
+   				</if>
+   				<if test="mem_bottom_thigh !=''">
+   					, mem_bottom_thigh=${mem_bottom_thigh}
+   				</if>
+   				<if test="mem_bottom_tail_girth == ''">
+   					, mem_bottom_tail_girth='0'
+   				</if>
+   				<if test="mem_bottom_tail_girth !=''">
+   					, mem_bottom_tail_girth=${mem_bottom_tail_girth}
+   				</if>
+   				<if test="mem_bottom_front_width ==''">
+   					,mem_bottom_front_width='0'
+   				</if>
+   				<if test="mem_bottom_front_width != ''">
+   					, mem_bottom_front_width = ${mem_bottom_front_width}
+   				</if>
+   				<if test="mem_bottom_back_width ==''">
+   					,mem_bottom_back_width='0'
+   				</if>
+   				<if test="mem_bottom_back_width != ''">
+   					, mem_bottom_back_width = ${mem_bottom_back_width}
+   				</if>
+      WHERE          mem_seq = #{mem_seq};
+   </update>
+</mapper>

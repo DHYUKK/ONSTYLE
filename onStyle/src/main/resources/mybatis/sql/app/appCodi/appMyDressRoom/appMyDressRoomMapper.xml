@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="appMyDressRoomMapper">
+    <resultMap id="myDrsRmValues" type="myDrsRmVo">
+	</resultMap>
+    <!-- 나의 옷 조회 -->
+	<select id="myCloth" parameterType="myDrsRmVo" resultMap="myDrsRmValues">
+		SELECT		my.myCloth_seq
+					, my.mycloth_img_route
+					, my.mem_seq
+					, c.category_nme
+		FROM		mycloth_tb my
+		JOIN		category_tb c
+		ON			my.category_seq = c.category_seq
+		WHERE		my.mem_seq = #{mem_seq}
+		AND			my.category_seq= #{category_seq}
+	</select> 
+	
+	<!-- 미스봄 상품 조회 -->
+	<select id="prodct" parameterType="myDrsRmVo" resultMap="myDrsRmValues">
+		SELECT		 p.prodct_seq
+					, p.prodct_nme
+					, concat(format(prodct_price,0),'원') as prodct_price
+					, p.transparent_img_route
+					, c.category_nme
+		FROM		 prodct p
+		JOIN		category_tb c
+		ON			p.category_seq = c.category_seq
+		WHERE		p.category_seq IN (#{category_seq}
+			<if test = "category_seq==1">
+					, 6, 7, 8
+			</if>
+			<if test = "category_seq==2">
+	 				, 9, 10
+			</if>
+			)
+	</select> 
+</mapper>

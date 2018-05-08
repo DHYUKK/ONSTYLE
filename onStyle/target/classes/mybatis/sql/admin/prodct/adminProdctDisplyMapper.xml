@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >   
+
+<mapper namespace="adminProdctDisplyMapper">
+   <resultMap type="adminProdctVo" id="adminProdctVo">
+       <result property="prodct_seq" column="prodct_seq" />
+       <result property="prodct_nme" column="prodct_nme" />
+       <result property="prodct_img_route1" column="prodct_img_route1" />
+       <result property="prodct_img_route2" column="prodct_img_route2" />
+       <result property="prodct_img_route3" column="prodct_img_route3" />
+       <result property="prodct_img_route4" column="prodct_img_route4" />
+       <result property="prodct_regtime" column="prodct_regtime" />
+       <result property="admin_prodct_nme" column="admin_prodct_nme" />
+       <result property="prodct_disply_state" column="prodct_disply_state" />
+       <result property="prodct_sell_state" column="prodct_sell_state" />
+       <result property="prodct_price" column="prodct_price" />
+       <result property="suplr_price" column="suplr_price" />
+       <result property="prodct_washtip" column="prodct_washtip" />
+       <result property="prodct_matrl" column="prodct_matrl" />
+       <result property="client_seq" column="client_seq" />
+       <result property="category_seq" column="category_seq" />
+       
+       <result property="disply_seq" column="disply_seq" />
+       <result property="main_disply" column="main_disply" />
+       <result property="big_group_disply" column="big_group_disply" />
+       <result property="mid_group_disply" column="mid_group_disply" />
+   </resultMap>
+   
+<!-- 상품 카테고리 조회-->
+   <select id="selectCategoryList" resultMap="adminProdctVo">
+       SELECT   category_seq
+             , category_nme
+             , category_sort   
+       FROM   category_tb;
+   </select> 
+   
+<!-- 카테고리별 조회 -->
+   <select id="categoryProdctList" parameterType="adminProdctVo" resultMap="adminProdctVo">
+      SELECT   p.prodct_seq
+            , p.prodct_nme
+            , p.prodct_price
+            , p.prodct_img_route1
+            , p.prodct_disply_state
+            , p.prodct_sell_state
+            <choose>
+               <!-- 메인 -->
+                <when test="displyArray == 0">
+                  , d.main_disply              
+                </when>
+                <when test="displyArray == 1 || displyArray == 2">
+                    , d.big_group_disply   main_disply
+                </when>
+                <when test="displyArray &gt; 3">
+                  , d.mid_group_disply   main_disply              
+                </when>
+            </choose>
+             , d.main_disply
+             , p.category_seq     
+      FROM   prodct p
+      LEFT JOIN   disply_tb d
+      ON      p.prodct_seq = d.prodct_seq
+      LEFT JOIN category_tb c
+      ON      p.category_seq = c.category_sort
+      WHERE
+      <choose>
+<!--           메인 -->
+          <when test="displyArray == 0">
+            p.prodct_disply_state = 'M'              
+          </when>
+<!--           TOP -->
+          <when test="displyArray == 1">
+            p.category_seq = 6
+         OR   p.category_seq = 7
+         OR   p.category_seq = 8
+          </when>
+<!--           Bottom -->
+          <when test="displyArray == 2">
+            p.category_seq = 9
+         OR   p.category_seq = 10              
+          </when>
+<!--           기타 중분류들 -->
+          <when test="displyArray &gt; 2">
+            p.category_seq = ${displyArray}              
+          </when>
+      </choose>
+      GROUP BY   prodct_seq
+      <choose>
+<!--           메인 -->
+          <when test="displyArray == 0">
+            ORDER BY   main_disply;              
+          </when>
+<!--           대분류 -->
+          <when test="displyArray &lt; 6">
+            ORDER BY   big_group_disply;              
+          </when>
+<!--           중분류 -->
+          <when test="displyArray &gt; 5">
+            ORDER BY   mid_group_disply;              
+          </when>
+      </choose>
+    </select>
+   
+<!-- 검색 상품 조회 -->
+    <select id="searchProdctList" parameterType="adminProdctVo" resultMap="adminProdctVo">
+      SELECT   p.prodct_seq
+            , p.prodct_nme
+            , p.prodct_price
+            , p.prodct_img_route1
+            , p.prodct_disply_state
+            , p.prodct_sell_state
+            , d.main_disply
+      FROM   prodct p
+      JOIN   disply_tb d
+      ON      p.prodct_seq = d.prodct_seq
+      LEFT JOIN category_tb c
+      ON      p.category_seq = c.category_sort
+          <if test="search != null">
+              WHERE ${search_nme} LIKE "%${search}%"
+          </if>
+         <choose>
+             <when test="search_disply_state == 1">
+                 AND   p.prodct_disply_state = 'Y'
+             </when>
+             <when test="search_disply_state == 2">
+                 AND   p.prodct_disply_state = 'N'
+             </when>
+         </choose>
+         <if test="search_mid_category">
+             AND   p.category_seq = ${search_mid_category}
+         </if>
+             <choose>
+             <when test="search_sell_state == 1">
+                 AND   p.prodct_sell_state = 'Y'
+             </when>
+             <when test="search_sell_state == 2">
+                 AND   p.prodct_sell_state = 'N'
+             </when>
+         </choose>
+      GROUP BY prodct_seq
+      ORDER BY main_disply;
+    </select>
+    
+<!-- 상품삭제 -->
+   <delete id="deleteDisplyProdct" parameterType="adminProdctVo">
+       DELETE   
+       FROM   prodct
+       WHERE   prodct_seq = 
+       <foreach collection = "group" item="group" separator="OR prodct_seq = ">
+                         #{group}
+       </foreach> 
+   </delete>
+
+<!--팝업상품조회 -->
+    <select id="selectPopUpProdct" parameterType="adminProdctVo" resultMap="adminProdctVo">
+        SELECT   p.prodct_seq
+            , p.prodct_nme
+            , p.category_seq
+            , p.category_seq cSeq
+            , c.category_nme mid_category_nme
+            , (SELECT category_nme 
+               FROM category_tb 
+               WHERE category_seq = (SELECT category_sort 
+                                 FROM category_tb 
+                                 WHERE category_seq = cSeq)) category_nme            
+        FROM   category_tb c, prodct p
+        WHERE   c.category_seq = p.category_seq
+        AND      p.prodct_seq IN (
+        <foreach collection = "group" item="group" separator=",">
+                         #{group}
+       </foreach>
+       );
+    </select>
+    
+<!--팝업상품 분류 수정 -->
+   <update id="updatePopUpProdct" parameterType="adminProdctVo">
+      UPDATE   prodct
+      SET      category_seq = #{category_seq}
+      WHERE   prodct_seq = 
+      <foreach collection = "group" item="group" separator="OR prodct_seq = ">
+                         #{group}
+       </foreach>        
+   </update>
+    
+<!--분류 조회 -->
+   <select id="selectCategory" parameterType="adminProdctVo" resultMap="adminProdctVo">
+       SELECT   *
+       FROM   category_tb
+       WHERE   category_sort = #{category_seq};
+   </select>
+   
+<!--진열 순서 변경 -->
+   <update id="updateMainDisplyOrdr" parameterType="adminProdctVo">
+       UPDATE   disply_tb
+       <choose>
+           <when test="displyArray == 0">
+            SET      main_disply = #{main_disply}
+           </when>
+           <when test="displyArray &lt; 6">
+               SET      big_group_disply = #{main_disply}
+           </when>
+           <when test="displyArray &gt; 5">
+               SET      mid_group_disply = #{main_disply}
+           </when>
+       </choose>
+       
+       WHERE   prodct_seq = #{prodct_seq};
+   </update>
+
+<!--진열 상태 변경 -->
+   <update id="updateProdctState" parameterType="adminProdctVo">
+       UPDATE   prodct
+       <choose>
+          <when test="state == 1">
+              SET      prodct_sell_state = 'Y'
+          </when>
+          <when test="state == 2">
+              SET      prodct_sell_state = 'N'
+          </when>
+          <when test="state == 3">
+              SET      prodct_disply_state = 'M'
+          </when>
+          <when test="state == 4">
+              SET      prodct_disply_state = 'N'
+          </when>
+       </choose>
+       WHERE   prodct_seq = 
+       <foreach collection = "group" item="group" separator="OR prodct_seq = ">
+                         #{group}
+       </foreach>
+   </update>
+</mapper>

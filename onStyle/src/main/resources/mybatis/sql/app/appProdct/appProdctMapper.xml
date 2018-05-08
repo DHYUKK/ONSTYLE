@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="appProdctMapper">
+    
+    <select id="appProdctSelect" resultType="prodctVo" parameterType="prodctVo">
+		SELECT	a.prodct_seq
+				, a.prodct_sell_state
+				, a.prodct_img_route1
+				, a.prodct_state
+				, a.prodct_disply_state
+				, a.prodct_nme
+				, a.prodct_price
+		FROM	(SELECT	p.prodct_seq
+						, p.prodct_sell_state
+						, p.prodct_img_route1
+						, p.prodct_state
+						, p.prodct_disply_state
+						, p.category_seq
+						, p.prodct_nme
+						, p.prodct_price
+				 FROM	prodct p
+ 				    	 LEFT JOIN	disply_tb d
+		    	 ON		p.prodct_seq = d.prodct_seq
+		    	 JOIN 	category_tb c
+		    	 ON		p.category_seq = c.category_seq
+				 WHERE	p.prodct_disply_state = 'Y'
+				 OR		p.prodct_disply_state = 'M'
+		    	 ORDER BY	d.big_group_disply asc) a
+		<if test="category_seq != 0">
+			<choose>
+				<when test="category_seq == 1 or category_seq == 2">
+					WHERE category_seq in ((SELECT	category_seq 
+											FROM	category_tb 
+											WHERE	category_sort = #{category_seq}))
+				</when>	
+				<when test="category_seq != 1 or category_seq != 2">
+					WHERE category_seq = ${category_seq}
+				</when>
+			</choose>
+		</if>	
+	</select>		    
+    
+    <!-- 상품삭제 -->
+	<delete id="deleteCartProdct" parameterType="shpBagVO">
+	    DELETE	
+	    FROM	shpbag_tb
+	    WHERE	shpbag_seq = 
+	    <foreach collection = "group" item="group" separator="OR shpbag_seq = ">
+    							#{group}
+    	</foreach> 	
+	</delete>
+	
+</mapper>

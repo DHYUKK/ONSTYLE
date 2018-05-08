@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >	
+
+<mapper namespace="adminCodiShrMapper">
+	 <resultMap id="shrValues" type="adminCodiShrVo">
+	</resultMap>
+	
+	 <select id="adminCodiShrList" parameterType="adminCodiShrVo" resultMap="shrValues">
+	 SELECT 			sh.codi_shr_seq
+	 				, codi_shr_regtime
+	 				, codi_img_route
+	 				, mem_id
+	 				, mem_name
+	 				, mem_nicknme
+	 				, COUNT(l.codi_shr_seq) as likeCount
+	FROM 			codi_shr_tb sh
+	JOIN 			codi_tb c
+	ON 				sh.codi_seq = c.codi_seq
+	JOIN 			mem_tb m
+	ON 				c.mem_seq = m.mem_seq
+	LEFT JOIN		like_tb l
+	ON 				sh.codi_shr_seq = l.codi_shr_seq
+	
+	<choose>		<!-- 검색조건 및 검색내용 -->	
+		<when test = "searchCondition1=='sh.codi_shr_seq' and searchContent!=''">
+	WHERE			${searchCondition1} = ${searchContent}
+		</when>
+		<otherwise>
+  	WHERE			${searchCondition1} LIKE '%${searchContent}%'
+		</otherwise>
+	</choose>
+	<if test="(oneDatepicker != null and twoDatepicker != null) and (oneDatepicker != '' and twoDatepicker != '')"> 	<!-- 날짜 검색조건 -->
+	AND				codi_shr_regtime BETWEEN #{oneDatepicker} AND #{twoDatepicker}
+	</if>
+	GROUP BY 		codi_shr_seq
+	ORDER BY 		sh.codi_shr_seq DESC
+	LIMIT 			#{firstRecordIndex}, #{recordCountPerPage}
+	 </select>
+	 
+	 <select id="codiShrListCount" parameterType="adminCodiShrVo" resultType="int">
+	 SELECT 			COUNT(sh.codi_shr_seq) as totalRecordCount
+	FROM 			codi_shr_tb sh
+	JOIN 			codi_tb c
+	ON 				sh.codi_seq = c.codi_seq
+	JOIN 			mem_tb m
+	ON 				c.mem_seq = m.mem_seq
+	
+	<choose>		<!-- 검색조건 및 검색내용 -->	
+		<when test = "searchCondition1=='sh.codi_shr_seq' and searchContent!=''">
+	WHERE			${searchCondition1} = ${searchContent}
+		</when>
+		<otherwise>
+  	WHERE			${searchCondition1} LIKE '%${searchContent}%'
+		</otherwise>
+	</choose>
+	<if test="(oneDatepicker != null and twoDatepicker != null) and (oneDatepicker != '' and twoDatepicker != '')"> 	<!-- 날짜 검색조건 -->
+	AND				codi_shr_regtime BETWEEN #{oneDatepicker} AND #{twoDatepicker}
+	</if>
+	 </select>
+	 
+	 <!-- 코디공유 게시글 삭제 -->
+	<delete id="adminShrDelete" parameterType="adminCodiShrVo">
+		DELETE 
+		FROM		codi_shr_tb
+		WHERE		codi_shr_seq IN (
+					<foreach collection="shrCheckGroup" item="item" separator=" , "> 
+						#{item}
+					</foreach>
+					)
+	</delete>
+	
+	<!-- 코디 상세보기 -->
+	<select id="codiShrRead" parameterType="adminCodiShrVo" resultType="adminCodiShrVo">
+		SELECT	distinct s.codi_shr_seq
+				, s.codi_shr_regtime
+				, c.codi_seq
+				, c.codi_img_route
+				, c.mem_seq
+				, (SELECT	count(ll.like_seq) 
+					FROM	like_tb ll
+					WHERE	ll.codi_shr_seq = #{codi_shr_seq}) liked
+				, (SELECT	count(crr.codi_reply_seq)
+					FROM	codi_reply_tb crr
+					WHERE	crr.codi_shr_seq = #{codi_shr_seq}) reply
+				, m.mem_nicknme
+				, m.mem_img_route
+		FROM	codi_shr_tb s
+		LEFT JOIN like_tb l
+		ON		l.codi_shr_seq = s.codi_shr_seq
+		JOIN	codi_tb c
+		ON		s.codi_seq = c.codi_seq
+		JOIN	mem_tb m
+		ON		c.mem_seq = m.mem_seq
+		LEFT JOIN codi_reply_tb r
+		ON		r.codi_shr_seq = s.codi_shr_seq
+		LEFT JOIN scrap_codi_tb sc
+		ON		sc.codi_shr_seq = s.codi_shr_seq
+		WHERE	s.codi_shr_seq = #{codi_shr_seq};
+	</select>
+	
+	<!-- 회원 다른코디 조회 -->
+	<select id="memCodiList" parameterType="adminCodiShrVo" resultType="adminCodiShrVo">
+		SELECT	s.codi_shr_seq
+				 ,	s.codi_shr_regtime
+				 ,	s.codi_seq
+				 ,	c.codi_img_route
+				 ,	c.mem_seq
+		FROM	codi_shr_tb s, codi_tb c
+		WHERE	s.codi_seq = c.codi_seq
+		AND		mem_seq = (SELECT mem_seq FROM codi_tb WHERE codi_seq = #{codi_seq})
+		AND	  s.codi_seq NOT IN (#{codi_seq})
+		LIMIT	4;
+	</select>
+
+	<!-- 코디 활용상품 조회 -->
+	<select id="codiUseProdct" parameterType="adminCodiShrVo" resultType="adminCodiShrVo">
+		SELECT	s.codi_shr_seq
+				 ,	u.codi_use_seq
+				 ,	u.prodct_seq
+				 ,	p.prodct_nme
+				 ,	p.prodct_img_route1
+				 ,	p.prodct_price
+		FROM	codi_shr_tb s
+		JOIN	codi_tb c
+		ON		s.codi_seq = c.codi_seq
+		LEFT JOIN codi_use_tb u
+		ON		c.codi_seq = u.codi_seq
+		JOIN	prodct p
+		ON		p.prodct_seq = u.prodct_seq
+		WHERE	s.codi_shr_seq = #{codi_shr_seq};
+	</select>
+	
+	<!-- 댓글조회 -->
+	<select id="replyList" parameterType="adminCodiShrVo" resultType="adminCodiShrVo">
+		SELECT		r.codi_reply_seq
+				 	, r.codi_reply_contnt
+				 	, m.mem_nicknme
+				 	, m.mem_img_route
+				 	, r.mem_seq
+				 	, (SELECT count(codi_reply_seq)
+				 	   FROM	 codi_reply_tb
+					   WHERE codi_shr_seq = #{codi_shr_seq}) reply
+		FROM		codi_reply_tb r, mem_tb m
+		WHERE		r.mem_seq = m.mem_seq
+		AND			r.codi_shr_seq = #{codi_shr_seq}
+		ORDER BY	r.codi_reply_seq DESC
+		LIMIT		5	OFFSET		#{firstRecordIndex};
+	</select>
+	
+	<!-- 댓글조회 -->
+	<select id="replyListCount" parameterType="adminCodiShrVo" resultType="int">
+		SELECT		COUNT(r.codi_reply_seq) as totalRecordCount
+		FROM		codi_reply_tb r, mem_tb m
+		WHERE		r.mem_seq = m.mem_seq
+		AND			r.codi_shr_seq = #{codi_shr_seq}
+		ORDER BY	r.codi_reply_seq DESC
+		LIMIT		5	OFFSET		#{firstRecordIndex};
+	</select>
+	
+	<!-- 댓글삭제 -->
+	<delete   id="adminDeleteReply" parameterType="adminCodiShrVo">
+		DELETE   
+		FROM   codi_reply_tb
+		WHERE   codi_reply_seq = #{codi_reply_seq}
+	</delete>
+</mapper>

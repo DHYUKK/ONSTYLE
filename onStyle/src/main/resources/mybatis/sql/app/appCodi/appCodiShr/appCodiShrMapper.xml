@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="appCodiShrMapper">
+    
+    
+<resultMap type="CodiShrVo" id="codiShrVo">
+    <result property="codi_shr_seq" column="codi_shr_seq" />
+    <result property="codi_img_route" column="codi_img_route" />
+    <result property="mem_seq" column="mem_seq" />
+    <result property="codi_shr_regtime" column="codi_shr_regtime" />
+    <result property="codi_shr_order" column="codi_shr_order" />
+    
+    <result property="codi_reqst_seq" column="codi_reqst_seq" />
+    <result property="codi_reqst_state" column="codi_reqst_state" />
+    <result property="codi_reqst_contnt" column="codi_reqst_contnt" />
+    
+    <result property="codi_answr_seq" column="codi_answr_seq" />
+    <result property="answr_contnt" column="answr_contnt" />
+    
+    <result property="scrap_codi_seq" column="scrap_codi_seq" />
+    
+    <result property="like_seq" column="like_seq" />
+    <result property="reply" column="reply" />
+    <result property="liked" column="liked" />
+    <result property="scraped" column="scraped" />
+    
+    <result property="mem_name" column="mem_name" />
+    <result property="mem_nicknme" column="mem_nicknme" />
+    <result property="mem_img_route" column="mem_img_route" />
+    <result property="likeState" column="likeState" />
+    
+    <result property="prodct_seq" column="prodct_seq" />
+    <result property="prodct_nme" column="prodct_nme" />
+    <result property="prodct_img_route1" column="prodct_img_route1" />
+    <result property="prodct_price" column="prodct_price" />
+</resultMap>
+
+
+<!--베스트 코디 조회 -->
+    <select id="selectBestCodiShrList" resultMap="codiShrVo">
+      SELECT   s.codi_shr_seq
+            , s.codi_shr_regtime
+            , c.codi_seq
+            , c.codi_img_route
+            , c.mem_seq
+            , m.mem_name
+            , m.mem_img_route
+            , m.mem_nicknme
+            , (SELECT   count(ll.like_seq) 
+               FROM   like_tb ll
+               WHERE   ll.codi_shr_seq = s.codi_shr_seq) liked
+<!--             , (SELECT   count(scrap_codi_seq)  -->
+<!--                FROM   scrap_codi_tb sctt -->
+<!--                WHERE   sctt.codi_shr_seq = sc.codi_shr_seq) scraped -->
+            , (SELECT   count(crr.codi_reply_seq)
+               FROM   codi_reply_tb crr
+               WHERE   crr.codi_shr_seq = s.codi_shr_seq) reply
+            , (SELECT count(like_seq)
+               FROM    like_tb a
+               WHERE   a.codi_shr_seq = l.codi_shr_seq
+               AND      a.mem_seq = #{mem_seq}) as likeState
+            , (SELECT count(scrap_codi_seq)
+               FROM    scrap_codi_tb sct
+               WHERE   sct.codi_shr_seq = sc.codi_shr_seq
+               AND      sct.mem_seq = #{mem_seq}) as scrapState
+      FROM   codi_shr_tb s
+      LEFT JOIN like_tb l
+      ON      l.codi_shr_seq = s.codi_shr_seq
+      JOIN   codi_tb c
+      ON      s.codi_seq = c.codi_seq
+      JOIN   mem_tb m
+      ON      c.mem_seq = m.mem_seq
+      LEFT JOIN codi_reply_tb r
+      ON      r.codi_shr_seq = s.codi_shr_seq
+      LEFT JOIN scrap_codi_tb sc
+      ON      sc.codi_shr_seq = s.codi_shr_seq
+      <choose>
+          <when test="today &lt; 16">
+              WHERE	s.codi_shr_regtime	BETWEEN	(SELECT	CONCAT(year(now()), '-', month(now()), '-', 1) today
+              									FROM	dual)
+              							AND		(SELECT	CONCAT(year(now()), '-', month(now()), '-', 15) today
+              									FROM	dual)
+          </when>
+          <when test="today &gt; 15">
+               WHERE	s.codi_shr_regtime	BETWEEN	(SELECT	CONCAT(year(now()), '-', month(now()), '-', 16) today
+              									FROM	dual)
+              							AND		(SELECT	CONCAT(year(now()), '-', month(now()), '-', 31) today
+              									FROM	dual)	
+          </when>
+      </choose>
+      GROUP BY codi_shr_seq
+      ORDER BY liked desc
+            , s.codi_shr_regtime desc
+            , s.codi_shr_seq desc
+      LIMIT 4;
+    </select>
+
+    <!--코디 전체 조회 -->
+    <select id="selectCodiShrList" parameterType="codiShrVo" resultType="codiShrVo">
+      SELECT   s.codi_shr_seq
+            , s.codi_shr_regtime
+            , c.codi_seq
+            , c.codi_img_route
+            , c.mem_seq
+            , m.mem_name
+            , m.mem_img_route
+            , m.mem_nicknme
+            , (SELECT   count(ll.like_seq) 
+               FROM   like_tb ll
+               WHERE   ll.codi_shr_seq = s.codi_shr_seq) liked
+            , (SELECT   count(crr.codi_reply_seq)
+               FROM   codi_reply_tb crr
+               WHERE   crr.codi_shr_seq = s.codi_shr_seq) reply
+            , (SELECT count(like_seq)
+               FROM    like_tb a
+               WHERE   a.codi_shr_seq = l.codi_shr_seq
+               AND      a.mem_seq = #{mem_seq}) as likeState
+            , (SELECT count(scrap_codi_seq)
+               FROM    scrap_codi_tb sct
+               WHERE   sct.codi_shr_seq = sc.codi_shr_seq
+               AND      sct.mem_seq = #{mem_seq}) as scrapState
+      FROM   codi_shr_tb s
+      LEFT JOIN like_tb l
+      ON      l.codi_shr_seq = s.codi_shr_seq
+      JOIN   codi_tb c
+      ON      s.codi_seq = c.codi_seq
+      JOIN   mem_tb m
+      ON      c.mem_seq = m.mem_seq
+      LEFT JOIN codi_reply_tb r
+      ON      r.codi_shr_seq = s.codi_shr_seq
+      LEFT JOIN scrap_codi_tb sc
+      ON      sc.codi_shr_seq = s.codi_shr_seq
+      WHERE   s.codi_shr_seq NOT IN (SELECT   codi_shr_seq
+		                              FROM   (SELECT   s.codi_shr_seq
+														, (SELECT   count(ll.like_seq) 
+														   FROM   like_tb ll
+														   WHERE   ll.codi_shr_seq = s.codi_shr_seq) liked
+												FROM   codi_shr_tb s
+												LEFT JOIN like_tb l
+												ON      l.codi_shr_seq = s.codi_shr_seq
+												<choose>
+												     <when test="today &lt; 16">
+											              WHERE	s.codi_shr_regtime	BETWEEN	(SELECT	CONCAT(year(now()), '-', month(now()), '-', 1) today
+											              									FROM	dual)
+											              							AND		(SELECT	CONCAT(year(now()), '-', month(now()), '-', 15) today
+											              									FROM	dual)
+										          	 </when>
+										         	 <when test="today &gt; 15">
+											               WHERE	s.codi_shr_regtime	BETWEEN	(SELECT	CONCAT(year(now()), '-', month(now()), '-', 16) today
+											              									FROM	dual)
+											              							AND		(SELECT	CONCAT(year(now()), '-', month(now()), '-', 31) today
+											              									FROM	dual)	
+										          	</when>
+										      	</choose>
+												GROUP BY codi_shr_seq
+												ORDER BY liked desc
+													, s.codi_shr_regtime desc
+													, s.codi_shr_seq desc
+												LIMIT 3) as liking)
+	  GROUP BY s.codi_shr_seq
+      <choose>
+          <when test="codi_shr_order == null">
+              ORDER BY s.codi_shr_regtime DESC;
+          </when>
+          <when test="codi_shr_order != null">
+              ORDER BY ${codi_shr_order};
+          </when>
+      </choose>        
+   </select>
+   
+<!-- codiUseProdct -->
+	<select id="codiUseProdct" parameterType="codiShrVO" resultType="codiShrVO">
+	    SELECT	s.codi_shr_seq
+	    		, u.codi_use_seq
+	    		, u.prodct_seq
+	    		, p.prodct_nme
+	    		, p.transparent_img_route as prodct_img_route1
+	    		, p.prodct_price
+	    FROM	codi_shr_tb s
+	    JOIN	codi_tb c
+	    ON		s.codi_seq = c.codi_seq
+	    LEFT JOIN	codi_use_tb u
+	    ON		c.codi_seq = u.codi_seq
+	    JOIN	prodct p
+	    ON		p.prodct_seq = u.prodct_seq
+	    WHERE	s.codi_shr_seq = #{codi_shr_seq};
+	</select>    
+    
+</mapper>

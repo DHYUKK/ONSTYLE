@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >	
+
+<mapper namespace="adminProdctMapper">
+<!-- 상품등록 -->
+	<insert id="prodctInsert" parameterType="prodctVo">
+		INSERT INTO prodct
+					(prodct_seq
+					, prodct_img_route1
+					, prodct_img_route2
+					, prodct_img_route3
+					, prodct_img_route4
+					, prodct_regtime
+					, prodct_nme
+					, admin_prodct_nme
+					, prodct_disply_state
+					, prodct_sell_state
+					, prodct_price
+					, suplr_price
+					, prodct_detail
+					, prodct_state
+					, client_seq
+					, category_seq )
+					
+		VALUES		(${prodct_seq}
+					, '${prodct_img_route1}'
+					, '${prodct_img_route2}'
+					, '${prodct_img_route3}'
+					, '${prodct_img_route4}'
+					, sysdate()
+					, '${prodct_nme}'
+					, '${admin_prodct_nme}'
+					, '${prodct_disply_state}'
+					, '${prodct_sell_state}'
+					, ${prodct_price}
+					, ${suplr_price}
+					, #{prodct_detail}
+					, #{prodct_state}
+					, ${client_seq}
+					, ${category_seq}
+					);
+	</insert>
+<!-- 	색상등록 -->
+	<insert id="adminProdctColorInsert" parameterType="prodctVo">
+		
+			INSERT INTO prodct_color_tb(prodct_color_seq, prodct_seq, prodct_color_nme)
+			VALUES
+			<foreach collection="colorGroup" item="item" separator=" , ">
+			((SELECT ifnull(max(a.prodct_color_seq), 0)+1 as prodct_color_seq FROM  prodct_color_tb as a)
+					,${prodct_seq} 
+					, '${item}')
+			</foreach>					
+	</insert>
+<!-- 	사이즈등록 -->
+	<insert id="prodctSizeInsert" parameterType="prodctVo">
+		<choose>
+			<when test="bigCategory == 1  or bigCategory == 3 or bigCategory == 5">
+				INSERT INTO top_size_tb(top_size_nme, top_length, top_shouldr, top_bust, top_tail_girth, top_slv_length, top_slv_opening, top_slv_bill, prodct_seq)
+				SELECT top_size_nme, top_length, top_shouldr, top_bust, top_tail_girth, top_slv_length, top_slv_opening, top_slv_bill, prodct_seq
+				FROM top_size_temp_tb
+				WHERE prodct_seq = ${prodct_seq}
+			</when>
+			<when test="bigCategory == 2">
+				INSERT INTO bottom_size_tb(bottom_size_nme, bottom_hip, bottom_thigh, bottom_tail_girth, bottom_front_width, bottom_back_width, prodct_seq, bottom_length, bottom_waist)
+				SELECT bottom_size_nme, bottom_hip, bottom_thigh, bottom_tail_girth, bottom_front_width, bottom_back_width, prodct_seq, bottom_length, bottom_waist
+				FROM bottom_size_temp_tb
+				WHERE prodct_seq = ${prodct_seq}
+			</when>
+		</choose>
+	</insert>
+<!-- 	임시사이즈 등록 -->
+	<insert id="insertTempSize" parameterType="prodctVo">
+		<choose>
+			<when test="category_seq == 1 or category_seq == 3 or category_seq == 5">
+		INSERT INTO top_size_temp_tb(top_size_seq
+									, top_size_nme
+									, top_length
+									, top_shouldr
+									, top_bust
+									, top_tail_girth
+									, top_slv_length
+									, top_slv_opening
+									, top_slv_bill
+									, prodct_seq)
+		VALUES((SELECT ifnull(max(a.top_size_seq), 0)+1 as top_size_seq FROM top_size_temp_tb as a)
+				, '${top_size_nme}'
+				, ${top_length}
+				, ${top_shouldr}
+				, ${top_bust}
+				, ${top_tail_girth}
+				, ${top_slv_length}
+				, ${top_slv_opening}
+				, ${top_slv_bill}
+				, ${prodct_seq})
+			</when>
+			<when test="category_seq == 2">
+		INSERT INTO bottom_size_temp_tb(bottom_size_seq
+									, bottom_size_nme
+									, bottom_length
+									, bottom_hip
+									, bottom_thigh
+									, bottom_tail_girth
+									, bottom_front_width
+									, bottom_back_width
+									, bottom_waist
+									, prodct_seq)
+		VALUES((SELECT ifnull(max(a.bottom_size_seq), 0)+1 as bottom_size_seq FROM bottom_size_temp_tb as a)
+				, '${bottom_size_nme}'
+				, ${bottom_length}
+				, ${bottom_hip}
+				, ${bottom_thigh}
+				, ${bottom_tail_girth}
+				, ${bottom_front_width}
+				, ${bottom_back_width}
+				, ${bottom_waist}
+				, ${prodct_seq})
+			</when>
+		</choose>
+	</insert>
+	
+<!-- 	진열 등록 -->
+	<insert id="adminProdctDisplyInsert" parameterType="prodctVo">
+		INSERT INTO disply_tb(disply_seq, main_disply, big_group_disply, mid_group_disply, prodct_seq)
+		VALUES((SELECT ifnull(max(a.disply_seq), 0)+1 as diply_seq FROM  disply_tb as a)
+				, (SELECT ifnull(max(a.main_disply), 0)+1 as main_disply FROM  disply_tb as a)
+				, (SELECT ifnull(max(a.big_group_disply), 0)+1 as big_group_disply FROM  disply_tb as a)
+				, (SELECT ifnull(max(a.mid_group_disply), 0)+1 as mid_group_disply FROM  disply_tb as a)
+				, ${prodct_seq})
+	
+	</insert>
+<!-- 	등록 시킬  상품코드 조회 -->
+    <select id="selectProdctCode" resultType="prodctVo">
+    	SELECT ifnull(max(prodct_seq), 1)+1 as prodct_seq
+		FROM  prodct
+    </select>
+<!--     임시 사이즈 리스트 조회 -->
+    <select id="selectTempSizeList" parameterType="prodctVo" resultType="prodctVo">
+    	<choose>
+    		<when test="category_seq == 1 or category_seq == 5 or category_seq == 6 or category_seq == 7 or category_seq == 8">
+    			SELECT top_size_seq, top_size_nme, top_length, top_shouldr, top_bust, top_tail_girth, top_slv_length, top_slv_opening, top_slv_bill, prodct_seq
+    			FROM top_size_temp_tb
+    		</when>
+    		<when test="category_seq == 2 or category_seq == 9 or category_seq == 10">
+    			SELECT bottom_size_seq, bottom_size_nme, bottom_length, bottom_waist, bottom_hip, bottom_thigh, bottom_tail_girth, bottom_front_width, bottom_back_width, prodct_seq
+    			FROM bottom_size_temp_tb
+    		</when>
+    	</choose>
+    	WHERE prodct_seq = ${prodct_seq}
+    </select>
+<!--     거래처 리스트  조회 -->
+    <select id="selectClientList" resultType="prodctVo">
+    	SELECT client_seq, client_nme
+    	FROM client
+    </select>
+<!--     상품수정 -->
+	<update id="prodctUpdate" parameterType="prodctVo">
+		UPDATE prodct
+		SET  prodct_nme=#{prodct_nme}, prodct_img_route1=#{prodct_img_route1}, prodct_img_route2=#{prodct_img_route2}, prodct_img_route3=#{prodct_img_route3}, prodct_img_route4=#{prodct_img_route4}
+			, admin_prodct_nme=#{admin_prodct_nme}, prodct_disply_state=#{prodct_disply_state}, prodct_sell_state=#{prodct_sell_state}, prodct_price=#{prodct_price}, suplr_price=#{suplr_price}, prodct_detail=#{prodct_detail}
+			,prodct_state=#{prodct_state}, client_seq=#{client_seq}, category_seq=#{category_seq}
+		WHERE prodct_seq = #{prodct_seq} 
+	</update>
+ 
+<!--  임시 사이즈 삭제 -->
+    <delete id="deleteTempSize" parameterType="prodctVo">
+    	DELETE
+    	<choose>
+   			<when test="sizeGroup != null">
+    			<choose>
+		   			<when test="category_seq == 1 or category_seq == 3 or category_seq == 5">
+		   				FROM top_size_temp_tb
+		   				WHERE top_size_seq IN
+		   				<foreach collection="sizeGroup" item="item" open="(" close=")" separator=" , ">
+							${item}
+						</foreach>
+		   			</when>
+		   			<when test="bigCategory == 2">
+		   				FROM bottom_size_temp_tb
+		   				WHERE bottom_size_seq IN
+		   				<foreach collection="sizeGroup" item="item" open="(" close=")" separator=" , ">
+							${item}
+						</foreach>
+		   			</when>
+		   		</choose>
+   			</when>
+   			<when test="sizeGroup == null">
+    			<choose>
+		   			<when test="bigCategory == 1 or category_seq == 3 or category_seq == 5">
+		   				FROM top_size_temp_tb
+		   				WHERE prodct_seq=${prodct_seq}
+		   			</when>
+		   			<when test="bigCategory == 2">
+		   				FROM bottom_size_temp_tb
+		   				WHERE prodct_seq=${prodct_seq}
+		   			</when>
+		   		</choose> 
+   			</when>
+    	</choose>
+    </delete>
+<!--     기존 상품 색상 삭제 -->
+    <delete id="prodctColorDelete" parameterType="prodctVo">
+    	DELETE
+    	FROM prodct_color_tb
+    	<choose>
+    	<when test="prodct_color_seq == 0" >
+    		WHERE prodct_seq = #{prodct_seq}
+    	</when>
+    	<when test="prodct_color_seq != 0" >
+    		WHERE prodct_color_seq = #{prodct_color_seq}
+    	</when>
+    	</choose>
+    </delete>
+    <delete id="prodctSizeDelete" parameterType="prodctVo">
+    	DELETE
+    	<choose>
+    		<when test="category_seq == 3 or category_seq == 5 or category_seq == 6 or category_seq == 7 or category_seq == 8">
+    			FROM top_size_tb
+    		</when>
+    		<when test="category_seq == 9 or categorY_seq == 10">
+    			FROM bottom_size_tb
+    		</when>
+    	</choose>
+    	WHERE prodct_seq =#{prodct_seq}
+    </delete>
+</mapper>

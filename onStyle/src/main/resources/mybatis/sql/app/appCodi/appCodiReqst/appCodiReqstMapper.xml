@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="appCodiReqstMapper">
+    
+    <!-- 코디요청 내역 조회 -->
+	<select id="appReqstList" parameterType="codiReqstVo" resultType="codiReqstVo">
+		SELECT 			rq.codi_reqst_seq
+						, codi_reqst_state
+						, codi_reqst_contnt
+						, rq.codi_seq
+						, c1.codi_img_route as reqst_codi_img_route
+                        , IFNULL(c2.codi_img_route, "/resources/admin/codi/codiReqst/img/answerReady.PNG") as answr_codi_img_route
+						, codi_reqst_date
+		FROM 			codi_reqst_tb rq
+		JOIN 			codi_tb c1 
+		ON 				rq.codi_seq = c1.codi_seq
+        LEFT JOIN		codi_answr_tb an
+        ON				rq.codi_reqst_seq = an.codi_reqst_seq
+        LEFT JOIN		codi_tb c2
+        ON				an.codi_seq = c2.codi_seq
+		WHERE 			c1.mem_seq = #{mem_seq}
+		ORDER BY 		codi_reqst_seq DESC
+	</select>
+	
+	<!-- 요청코디 상세조회 : 요청 조회 -->
+	<select id="appReqstInfo" parameterType="codiReqstVo" resultType="codiReqstVo">
+		SELECT 			m.mem_img_route
+						, m.mem_nicknme
+						, rq.codi_reqst_seq
+						, rq.codi_seq as reqstCodi_seq
+						, rq.codi_reqst_contnt
+						, rc.codi_img_route as reqst_codi_img_route
+						, rq.codi_reqst_state
+		FROM 			codi_reqst_tb rq
+		JOIN 			codi_tb rc
+		ON 				rq.codi_seq = rc.codi_seq
+		JOIN 			mem_tb m
+		ON 				rc.mem_seq = m.mem_seq
+		WHERE 			rq.codi_reqst_seq = #{codi_reqst_seq};
+	</select>
+	
+	<!-- 요청코디 상세조회 : 답변 조회-->
+	<select id="appAnswrInfo" parameterType="codiReqstVo" resultType="codiReqstVo">
+		SELECT 			an.codi_answr_seq
+						, an.codi_seq as answrCodi_seq
+						, an.answr_contnt
+						, ac.codi_img_route as answr_codi_img_route
+		FROM 			codi_answr_tb an
+		JOIN 			codi_tb ac
+		ON 				an.codi_seq = ac.codi_seq
+		WHERE 			an.codi_reqst_seq = #{codi_reqst_seq};
+	</select>
+	
+	
+</mapper>

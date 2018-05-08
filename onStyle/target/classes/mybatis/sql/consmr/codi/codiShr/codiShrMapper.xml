@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="codiShrMapper">
+
+<resultMap type="CodiShrVo" id="codiShrVo">
+    <result property="codi_shr_seq" column="codi_shr_seq" />
+    <result property="codi_img_route" column="codi_img_route" />
+    <result property="mem_seq" column="mem_seq" />
+    <result property="codi_shr_regtime" column="codi_shr_regtime" />
+   <result property="codi_shr_order" column="codi_shr_order" />
+    
+    <result property="codi_reqst_seq" column="codi_reqst_seq" />
+    <result property="codi_reqst_state" column="codi_reqst_state" />
+    <result property="codi_reqst_contnt" column="codi_reqst_contnt" />
+    
+    <result property="codi_answr_seq" column="codi_answr_seq" />
+    <result property="answr_contnt" column="answr_contnt" />
+    
+    <result property="scrap_codi_seq" column="scrap_codi_seq" />
+    
+    <result property="like_seq" column="like_seq" />
+    <result property="reply" column="reply" />
+    <result property="liked" column="liked" />
+    
+    <result property="mem_name" column="mem_name" />
+    <result property="mem_nicknme" column="mem_nicknme" />
+    <result property="mem_img_route" column="mem_img_route" />
+    <result property="likeState" column="likeState" />
+    
+    <result property="prodct_seq" column="prodct_seq" />
+    <result property="prodct_nme" column="prodct_nme" />
+    <result property="prodct_img_route1" column="prodct_img_route1" />
+    <result property="prodct_price" column="prodct_price" />
+</resultMap>
+
+<!--코디 전체 조회 -->
+    <select id="selectCodiShrList" parameterType="codiShrVo" resultType="codiShrVo">
+      SELECT   s.codi_shr_seq
+            , s.codi_shr_regtime
+            , c.codi_seq
+            , c.codi_img_route
+            , c.mem_seq
+            , m.mem_name
+            , m.mem_img_route
+            , m.mem_nicknme
+            , (SELECT   count(ll.like_seq) 
+               FROM   like_tb ll
+               WHERE   ll.codi_shr_seq = s.codi_shr_seq) liked
+            , (SELECT   count(crr.codi_reply_seq)
+               FROM   codi_reply_tb crr
+               WHERE   crr.codi_shr_seq = s.codi_shr_seq) reply
+            , (SELECT count(like_seq)
+               FROM    like_tb a
+               WHERE   a.codi_shr_seq = l.codi_shr_seq
+               AND      a.mem_seq = #{mem_seq}) as likeState
+            , (SELECT count(scrap_codi_seq)
+               FROM    scrap_codi_tb sct
+               WHERE   sct.codi_shr_seq = sc.codi_shr_seq
+               AND      sct.mem_seq = #{mem_seq}) as scrapState
+      FROM   codi_shr_tb s
+      LEFT JOIN like_tb l
+      ON      l.codi_shr_seq = s.codi_shr_seq
+      JOIN   codi_tb c
+      ON      s.codi_seq = c.codi_seq
+      JOIN   mem_tb m
+      ON      c.mem_seq = m.mem_seq
+      LEFT JOIN codi_reply_tb r
+      ON      r.codi_shr_seq = s.codi_shr_seq
+      LEFT JOIN scrap_codi_tb sc
+      ON      sc.codi_shr_seq = s.codi_shr_seq
+      WHERE   s.codi_shr_seq NOT IN (SELECT   codi_shr_seq
+		                              FROM   (SELECT   s.codi_shr_seq
+														, (SELECT   count(ll.like_seq) 
+														   FROM   like_tb ll
+														   WHERE   ll.codi_shr_seq = s.codi_shr_seq) liked
+												FROM   codi_shr_tb s
+												LEFT JOIN like_tb l
+												ON      l.codi_shr_seq = s.codi_shr_seq
+												<choose>
+												     <when test="today &lt; 16">
+											              WHERE	s.codi_shr_regtime	BETWEEN	(SELECT	CONCAT(year(now()), '-', month(now()), '-', 1) today
+											              									FROM	dual)
+											              							AND		(SELECT	CONCAT(year(now()), '-', month(now()), '-', 15) today
+											              									FROM	dual)
+										          	 </when>
+										         	 <when test="today &gt; 15">
+											               WHERE	s.codi_shr_regtime	BETWEEN	(SELECT	CONCAT(year(now()), '-', month(now()), '-', 16) today
+											              									FROM	dual)
+											              							AND		(SELECT	CONCAT(year(now()), '-', month(now()), '-', 31) today
+											              									FROM	dual)	
+										          	</when>
+										      	</choose>
+												GROUP BY codi_shr_seq
+												ORDER BY liked desc
+													, s.codi_shr_regtime desc
+													, s.codi_shr_seq desc
+												LIMIT 3) as liking)
+	  GROUP BY s.codi_shr_seq
+      <choose>
+          <when test="codi_shr_order == null">
+              ORDER BY s.codi_shr_regtime DESC;
+          </when>
+          <when test="codi_shr_order != null">
+              ORDER BY ${codi_shr_order};
+          </when>
+      </choose>        
+   </select>
+     
+<!--베스트 코디 조회 -->
+    <select id="selectBestCodiShrList" resultMap="codiShrVo">
+      SELECT   s.codi_shr_seq
+            , s.codi_shr_regtime
+            , c.codi_seq
+            , c.codi_img_route
+            , c.mem_seq
+            , m.mem_name
+            , m.mem_img_route
+            , m.mem_nicknme
+            , (SELECT   count(ll.like_seq) 
+               FROM   like_tb ll
+               WHERE   ll.codi_shr_seq = s.codi_shr_seq) liked
+            , (SELECT   count(crr.codi_reply_seq)
+               FROM   codi_reply_tb crr
+               WHERE   crr.codi_shr_seq = s.codi_shr_seq) reply
+            , (SELECT count(like_seq)
+               FROM    like_tb a
+               WHERE   a.codi_shr_seq = l.codi_shr_seq
+               AND      a.mem_seq = #{mem_seq}) as likeState
+            , (SELECT count(scrap_codi_seq)
+               FROM    scrap_codi_tb sct
+               WHERE   sct.codi_shr_seq = sc.codi_shr_seq
+               AND      sct.mem_seq = #{mem_seq}) as scrapState
+      FROM   codi_shr_tb s
+      LEFT JOIN like_tb l
+      ON      l.codi_shr_seq = s.codi_shr_seq
+      JOIN   codi_tb c
+      ON      s.codi_seq = c.codi_seq
+      JOIN   mem_tb m
+      ON      c.mem_seq = m.mem_seq
+      LEFT JOIN codi_reply_tb r
+      ON      r.codi_shr_seq = s.codi_shr_seq
+      LEFT JOIN scrap_codi_tb sc
+      ON      sc.codi_shr_seq = s.codi_shr_seq
+      <choose>
+          <when test="today &lt; 16">
+              WHERE	s.codi_shr_regtime	BETWEEN	(SELECT	CONCAT(year(now()), '-', month(now()), '-', 1) today
+              									FROM	dual)
+              							AND		(SELECT	CONCAT(year(now()), '-', month(now()), '-', 15) today
+              									FROM	dual)
+          </when>
+          <when test="today &gt; 15">
+               WHERE	s.codi_shr_regtime	BETWEEN	(SELECT	CONCAT(year(now()), '-', month(now()), '-', 16) today
+              									FROM	dual)
+              							AND		(SELECT	CONCAT(year(now()), '-', month(now()), '-', 31) today
+              									FROM	dual)	
+          </when>
+      </choose>
+      GROUP BY codi_shr_seq
+      ORDER BY liked desc
+            , s.codi_shr_regtime desc
+            , s.codi_shr_seq desc
+      LIMIT 3;
+    </select>
+
+<!-- 회원 좋아요 버튼 색--> 
+   <select id="memLike" parameterType="codiShrVo" resultType="codiShrVo">
+      SELECT   l.codi_shr_seq   
+      FROM   codi_shr_tb s
+      LEFT JOIN like_tb l
+      ON      l.codi_shr_seq = s.codi_shr_seq
+      WHERE   l.mem_seq = #{mem_seq};
+   </select>
+       
+<!-- 좋아요 조건 -->
+   <select id="checkLike" parameterType="codiShrVo" resultType="codiShrVo">
+      SELECT   count(like_seq) as liked
+      FROM   codi_shr_tb s
+      LEFT JOIN like_tb l
+      ON      l.codi_shr_seq = s.codi_shr_seq
+      WHERE   l.codi_shr_seq = #{codi_shr_seq}
+      AND      l.mem_seq = #{mem_seq};   
+   </select>
+
+<!--좋아요 -->
+   <insert id="insertLike" parameterType="codiShrVo">
+      INSERT INTO like_tb
+      VALUES ((SELECT IFNULL(MAX(a.like_seq),0) + 1 AS like_seq FROM like_tb as a)
+             ,   #{mem_seq}
+             ,   #{codi_shr_seq});   
+   </insert>
+   
+<!--좋아요 취소 -->
+   <delete id="deleteLike" parameterType="codiShrVo">
+      DELETE    
+      FROM    like_tb
+      WHERE   mem_seq = #{mem_seq}
+      AND     codi_shr_seq = #{codi_shr_seq}; 
+   </delete>
+
+<!-- 좋아요 개수 -->
+   <select id="countLike" parameterType="codiShrVo" resultType="codiShrVo">
+      SELECT   count(like_seq) as liked
+            ,   l.codi_shr_seq
+      FROM   codi_shr_tb s
+      LEFT JOIN like_tb l
+      ON      l.codi_shr_seq = s.codi_shr_seq
+      WHERE   l.codi_shr_seq = #{codi_shr_seq};   
+   </select>
+      
+<!--스크랩 -->
+   <insert id="insertScrap" parameterType="codiShrVo">
+      INSERT INTO   scrap_codi_tb
+      VALUES   ((SELECT IFNULL(MAX(a.scrap_codi_seq),0)+1 AS scrap_codi_seq FROM scrap_codi_tb as a)
+             ,   #{mem_seq}
+             ,   #{codi_shr_seq});
+   </insert>
+   
+<!-- 코디 상세보기 -->
+   <select id="selectCodi" parameterType="codiShrVo" resultType="codiShrVo">
+      SELECT   distinct s.codi_shr_seq
+            , s.codi_shr_regtime
+            , c.codi_seq
+            , c.codi_img_route
+            , c.mem_seq
+            , (SELECT   count(ll.like_seq) 
+               FROM   like_tb ll
+               WHERE   ll.codi_shr_seq = #{codi_shr_seq}) liked
+            , (SELECT   count(crr.codi_reply_seq)
+               FROM   codi_reply_tb crr
+               WHERE   crr.codi_shr_seq = #{codi_shr_seq}) reply
+            , m.mem_nicknme
+            , m.mem_img_route
+            , (SELECT   count(like_seq)
+               FROM    like_tb a
+               WHERE   a.mem_seq = #{mem_seq}
+               AND      a.codi_shr_seq = #{codi_shr_seq}) as likeState
+            , (SELECT   count(scrap_codi_seq)
+               FROM    scrap_codi_tb sct
+               WHERE   sct.mem_seq = #{mem_seq}
+               AND      sct.codi_shr_seq = #{codi_shr_seq}) as scrapState
+      FROM   codi_shr_tb s
+      LEFT JOIN like_tb l
+      ON      l.codi_shr_seq = s.codi_shr_seq
+      JOIN   codi_tb c
+      ON      s.codi_seq = c.codi_seq
+      JOIN   mem_tb m
+      ON      c.mem_seq = m.mem_seq
+      LEFT JOIN codi_reply_tb r
+      ON      r.codi_shr_seq = s.codi_shr_seq
+      LEFT JOIN scrap_codi_tb sc
+      ON      sc.codi_shr_seq = s.codi_shr_seq
+      WHERE   s.codi_shr_seq = #{codi_shr_seq};
+   </select>
+   
+<!--공유 취소 -->
+   <delete id="cancelShr" parameterType="codiShrVo">
+       DELETE
+       FROM		codi_shr_tb
+	   WHERE	codi_seq = (SELECT	codi_seq
+	   						FROM	codi_tb
+	   						WHERE	mem_seq = #{mem_seq}
+	   						AND		codi_seq = #{codi_seq});
+   </delete>
+   
+<!-- 회원 다른코디 조회 -->
+   <select id="memCodiList" parameterType="codiShrVo" resultType="codiShrVo">
+      SELECT   s.codi_shr_seq
+             ,   s.codi_shr_regtime
+             ,   s.codi_seq
+             ,   c.codi_img_route
+             ,   c.mem_seq
+      FROM   codi_shr_tb s, codi_tb c
+      WHERE   s.codi_seq = c.codi_seq
+      AND      mem_seq = (SELECT mem_seq FROM codi_tb WHERE codi_seq = #{codi_seq})
+      AND	  s.codi_seq NOT IN (#{codi_seq})
+      LIMIT   4;
+   </select>
+
+<!-- 코디 활용상품 조회 -->
+   <select id="codiUseProdct" parameterType="codiShrVo" resultType="codiShrVo">
+       SELECT   s.codi_shr_seq
+             ,   u.codi_use_seq
+             ,   u.prodct_seq
+             ,   p.prodct_nme
+             ,   p.prodct_img_route1
+             ,   p.prodct_price
+       FROM   codi_shr_tb s
+       JOIN   codi_tb c
+       ON      s.codi_seq = c.codi_seq
+       LEFT JOIN codi_use_tb u
+       ON      c.codi_seq = u.codi_seq
+       JOIN   prodct p
+       ON      p.prodct_seq = u.prodct_seq
+       WHERE   s.codi_shr_seq = #{codi_shr_seq};
+   </select>
+   
+<!-- 댓글등록 -->
+   <insert id="insertReply" parameterType="codiShrVo">
+       INSERT INTO   codi_reply_tb(codi_reply_seq, codi_reply_contnt, mem_seq, codi_shr_seq)
+       VALUES   ((SELECT IFNULL(MAX(a.codi_reply_seq),0)+1 AS codi_reply_seq FROM codi_reply_tb as a)
+             ,   #{codi_reply_contnt}
+             ,   #{mem_seq}
+             ,   #{codi_shr_seq});
+   </insert>
+   
+<!-- 댓글조회 -->
+   <select id="selectReply" parameterType="codiShrVo" resultType="codiShrVo">
+       SELECT   r.codi_reply_seq
+             ,   r.codi_reply_contnt
+             ,   m.mem_nicknme
+             ,	m.mem_img_route
+             ,   r.mem_seq
+             ,	 (SELECT count(codi_reply_seq)
+             	  FROM	 codi_reply_tb
+             	  WHERE	 codi_shr_seq = #{codi_shr_seq}) reply
+       FROM   codi_reply_tb r, mem_tb m
+       WHERE   r.mem_seq = m.mem_seq
+       AND      r.codi_shr_seq = #{codi_shr_seq}
+       ORDER BY r.codi_reply_seq DESC
+       LIMIT	5
+       OFFSET   #{reply_view};
+   </select>
+   
+<!-- 댓글삭제 -->
+   <delete   id="deleteReply" parameterType="codiShrVo">
+       DELETE   
+       FROM   codi_reply_tb
+       WHERE   codi_reply_seq = #{codi_reply_seq}
+       AND      mem_seq = #{mem_seq};
+   </delete>
+
+</mapper>
+
+
+    
