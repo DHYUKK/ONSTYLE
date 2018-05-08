@@ -191,7 +191,7 @@ ONSTYLE
 
 3. 주요기능
 - #### 사용자 웹
-	* https://youtu.be/9XtdQrbn8Ag
+
 	* [상품조회][prodct]
 	* [가상코디][virtualCodi]
 	* [코디요청][codiReqst]
@@ -213,4 +213,7 @@ ONSTYLE
 [admordr]:/onStyle/src/main/webapp/WEB-INF/views/adminView/ordr
 [admcodiReqst]:/onStyle/src/main/webapp/WEB-INF/views/adminView/codi/codiReqst
 [admcodiShr]:/onStyle/src/main/webapp/WEB-INF/views/adminView/codi/codiShr
+
+4. 시연 동영상
+	* https://youtu.be/9XtdQrbn8Ag
 
